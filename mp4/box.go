@@ -8,7 +8,7 @@ import (
 )
 
 type IBox interface {
-	getMeta(r io.ReadSeeker, bi *BoxInfo, ctx *media.Context, meta *media.Meta) error
+	GetMeta(r io.ReadSeeker, bi *BoxInfo, ctx *media.Context, meta *media.Meta) error
 }
 
 // Box is ISO/IEC 14496-12 Box
@@ -59,7 +59,6 @@ func GetMetaBoxes(file *os.File) ([]*BoxInfo, error) {
 	for {
 		// read 8 bytes
 		if bi, err := ReadBoxInfo(file); err == nil {
-			//fmt.Println("tag name", bi.Type)
 			if isSupportedBox(bi) {
 				if IsContainerBox(bi) {
 					_, err = bi.SeekToPayload(file)

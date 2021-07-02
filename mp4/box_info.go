@@ -20,6 +20,9 @@ type BoxInfo struct {
 
 	// Type specifies box type which is represented by 4 characters.
 	Type BoxType
+
+	// ExtendedType specifies box extended type which is represented by 16 characters.
+	ExtendedType [16]byte
 }
 
 const (
@@ -46,7 +49,7 @@ func ReadBoxInfo(r io.ReadSeeker) (*BoxInfo, error) {
 
 	// pick size and type
 	data := buf.Bytes()
-	bi.Size = uint64(binary.BigEndian.Uint32(data))
+	bi.Size = uint64(binary.BigEndian.Uint32(buf.Bytes()[:4]))
 	bi.Type = BoxType{data[4], data[5], data[6], data[7]}
 
 	if bi.Size == 1 {
@@ -57,10 +60,24 @@ func ReadBoxInfo(r io.ReadSeeker) (*BoxInfo, error) {
 		}
 		bi.HeaderSize += 8
 		bi.Size = binary.BigEndian.Uint64(buf.Bytes())
+	} else if bi.Size == 0 {
+		// box extends to end of file
+		offsetEOF, err := r.Seek(0, io.SeekEnd)
+		if err != nil {
+			return nil, err
+		}
+		bi.Size = uint64(offsetEOF) - bi.Offset
+		if _, err := bi.SeekToPayload(r); err != nil {
+			return nil, err
+		}
 	}
 
 	if bi.Type == StrToBoxType("uuid") {
-		bi.HeaderSize += 16
+		buf.Reset()
+		if _, err := io.CopyN(buf, r, 16); err != nil {
+			return nil, err
+		}
+		copy(bi.ExtendedType[:], buf.Bytes())
 	}
 	return bi, nil
 }

@@ -1,6 +1,9 @@
 ## 已支持相机文件格式
 * SONY XAVC文件
-* 进行中：Canon, FUJI, Panasonic
+* Canon 
+* Fujifilm
+* Panasonic
+* Atomos
 * 待补充
 
 ## 如何使用
@@ -24,8 +27,9 @@ mpeg-4(.mp4)
 * SONY mdat meta -> xml 
 * FUJIFILM moov -> udta -> MVTG
 * PANASONIC moov -> udta -> PANA
+* TODO
 
-## Davinci Resolve fields
+## DaVinci Resolve fields
 * Camera Type
 * Camera Manufacturer
 * Camera Serial #
@@ -58,5 +62,5 @@ mpeg-4(.mp4)
 
 ## 其他
 1. csv文件导出的方式再导入达芬奇不支持默认的时间码匹配规则，需要选择文件名匹配
-
+2. console输出存在大量Exif的tag没有name的情况，因为本项目目的是为了提供给达芬奇提取元数据使用，只针对性的做了主要字段的解析，有全部元数据查看需求的可以使用ExifTool等工具,当然如果你觉得哪些字段比较重要需要参照也可以提出来，可以的话我也会加上
 

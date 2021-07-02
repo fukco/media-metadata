@@ -10,6 +10,7 @@ const (
 )
 
 const (
+	MP42     SupportMajorBrand = "mp42"
 	SONYXAVC SupportMajorBrand = "XAVC"
 	QT       SupportMajorBrand = "qt  "
 )

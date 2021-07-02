@@ -5,6 +5,7 @@ import (
 	"github.com/fukco/media-meta-parser/media"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 )
 
@@ -27,12 +28,12 @@ func (boxType BoxType) String() string {
 	return fmt.Sprintf("0x%02x%02x%02x%02x", boxType[0], boxType[1], boxType[2], boxType[3])
 }
 
-func isASCII(c byte) bool {
+func isASCIIPrintableCharacter(c byte) bool {
 	return c >= 0x20 && c <= 0x7e
 }
 
 func isPrintable(c byte) bool {
-	return isASCII(c) || c == 0xa9
+	return isASCIIPrintableCharacter(c) || c == 0xa9
 }
 
 var boxMap = make(map[BoxType]interface{}, 64)
@@ -41,20 +42,13 @@ func AppendBoxMap(boxType BoxType, i interface{}) {
 	boxMap[boxType] = i
 }
 
-func ExtractMeta(file *os.File) *media.Meta {
+func ExtractMeta(file *os.File, ctx *media.Context) *media.Meta {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
 			return
 		}
 	}(file)
-	is, ctx, err := media.IsSupportMediaFile(file)
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	} else if !is {
-		return nil
-	}
 	boxes, _ := GetMetaBoxes(file)
 	path, _ := filepath.Abs(file.Name())
 	meta := &media.Meta{
@@ -63,18 +57,13 @@ func ExtractMeta(file *os.File) *media.Meta {
 		Items:     make([]interface{}, 0, 8),
 	}
 	for i := range boxes {
-		switch boxes[i].Type {
-		case StrToBoxType("xml "):
-			xml := Xml{}
-			if err := xml.getMeta(file, boxes[i], ctx, meta); err != nil {
+		funcValue := reflect.ValueOf(boxMap[boxes[i].Type]).MethodByName("GetMeta")
+		if funcValue.IsValid() {
+			result := funcValue.Call([]reflect.Value{reflect.ValueOf(file), reflect.ValueOf(boxes[i]), reflect.ValueOf(ctx), reflect.ValueOf(meta)})
+			err := result[0].Interface()
+			if err != nil {
 				fmt.Println(err)
 			}
-		case StrToBoxType("mdat"):
-			mdat := Mdat{}
-			if err := mdat.getMeta(file, boxes[i], ctx, meta); err != nil {
-				fmt.Println(err)
-			}
-
 		}
 	}
 	return meta

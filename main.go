@@ -44,24 +44,22 @@ import (
 	"flag"
 	"fmt"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/mp4"
 	"github.com/fukco/media-meta-parser/output"
 	"golang.org/x/text/encoding/unicode"
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"time"
 )
 
-// getMediaFiles is a func return mp4 files and mov files
+// getMediaFiles is a func return media files
 func getMediaFiles(p string, recursive bool) ([]*os.File, error) {
 	fi, err := os.Stat(p)
 	if err != nil {
 		return nil, err
 	}
 	if !fi.IsDir() {
-		return nil, errors.New("Your input is not a folder path ")
+		return nil, errors.New("input is not a folder path")
 	}
 	mediaFiles := make([]*os.File, 0, 64)
 	if err := filepath.WalkDir(p, func(path string, entry os.DirEntry, err error) error {
@@ -71,8 +69,7 @@ func getMediaFiles(p string, recursive bool) ([]*os.File, error) {
 			}
 		}
 		mediaFile, _ := os.Open(path)
-		if strings.EqualFold(filepath.Ext(path), string(media.Mp4Extension)) ||
-			strings.EqualFold(filepath.Ext(path), string(media.MovExtension)) {
+		if IsSupportExtension(mediaFile) {
 			mediaFiles = append(mediaFiles, mediaFile)
 		}
 		return nil
@@ -87,15 +84,12 @@ func getMediaFile(p string) (*os.File, error) {
 		return nil, err
 	} else {
 		if fileInfo.IsDir() {
-			return nil, errors.New("Your input file path is illegal! ")
+			return nil, errors.New("input file path is illegal")
 		}
 	}
 	mediaFile, err := os.Open(p)
-	if err != nil {
+	if err != nil || !IsSupportExtension(mediaFile) {
 		return nil, err
-	}
-	if strings.EqualFold(filepath.Ext(p), string(media.Mp4Extension)) ||
-		strings.EqualFold(filepath.Ext(p), string(media.MovExtension)) {
 	}
 	return mediaFile, nil
 }
@@ -108,11 +102,14 @@ func getMediaMeta(mediaFiles []*os.File) []*media.Meta {
 	for i := range mediaFiles {
 		mediaFile := mediaFiles[i]
 		var meta *media.Meta
-		if strings.EqualFold(filepath.Ext(mediaFile.Name()), string(media.Mp4Extension)) {
-			meta = mp4.ExtractMeta(mediaFile)
-		} else if strings.EqualFold(filepath.Ext(mediaFile.Name()), string(media.MovExtension)) {
-
+		is, ctx, err := IsSupportMediaFile(mediaFile)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		} else if !is {
+			continue
 		}
+		meta = ExtractMeta(mediaFile, ctx)
 		if meta != nil {
 			slice = append(slice, meta)
 		}
@@ -131,7 +128,7 @@ func consoleOutput(metaSlice []*media.Meta) {
 	}
 }
 
-func resolveOutput(metaSlice []*media.Meta, outputPath string) {
+func resolveCSVOutput(metaSlice []*media.Meta, outputPath string) {
 	if len(metaSlice) <= 0 {
 		return
 	}
@@ -184,11 +181,14 @@ func drProcessMediaFile(absPath string) *output.DRMetadata {
 		return nil
 	} else {
 		var meta *media.Meta
-		if strings.EqualFold(filepath.Ext(absPath), string(media.Mp4Extension)) {
-			meta = mp4.ExtractMeta(f)
-		} else if strings.EqualFold(filepath.Ext(absPath), string(media.MovExtension)) {
-
+		is, ctx, err := IsSupportMediaFile(f)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		} else if !is {
+			return nil
 		}
+		meta = ExtractMeta(f, ctx)
 		if meta == nil {
 			return nil
 		}
@@ -259,7 +259,9 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		metaSlice = getMediaMeta([]*os.File{file})
+		if file != nil {
+			metaSlice = getMediaMeta([]*os.File{file})
+		}
 	} else {
 		files, err := getMediaFiles(*mediaFileFolder, *recursive)
 		if err != nil {
@@ -294,7 +296,7 @@ func main() {
 		}
 		if *outputMode == "resolve" {
 			outputFile := filepath.Join(*outputPath, fmt.Sprintf("resolve-meta_%s.csv", time.Now().Format("20060102150405")))
-			resolveOutput(metaSlice, outputFile)
+			resolveCSVOutput(metaSlice, outputFile)
 		}
 	}
 	fmt.Println("Processing Successfully!")
