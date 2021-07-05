@@ -120,6 +120,7 @@ var exifTagDefinitionMap = map[uint16]*TagDefinition{
 		}
 		return str
 	}},
+	0xa435: {Name: "Lens Serial Number"},
 }
 
 var panasonicTagDefinitionMap = map[uint16]*TagDefinition{

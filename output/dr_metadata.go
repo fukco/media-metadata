@@ -114,6 +114,8 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 					drMetadata.CameraSerial = tag.Value
 				} else if tag.ID == 0xa432 {
 					drMetadata.LensNotes = tag.Value
+				} else if tag.ID == 0xa435 {
+					drMetadata.LensNumber = tag.Value
 				}
 			}
 		}
@@ -133,6 +135,8 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 				drMetadata.LensNumber = tag.Value
 			} else if tag.ID == 0x9d {
 				drMetadata.NdFilter = tag.Value
+			} else if tag.ID == 0x9f {
+				drMetadata.ShutterType = tag.Value
 			}
 		}
 	}
