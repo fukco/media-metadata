@@ -144,6 +144,7 @@ var exifTagDefinitionMap = map[uint16]*TagDefinition{
 		}
 		return str
 	}},
+	0xa434: {Name: "Lens Model"},
 	0xa435: {Name: "Lens Serial Number"},
 }
 

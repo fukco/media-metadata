@@ -117,6 +117,7 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 		drMetadata.FocalPoint = values[0x920a]
 		drMetadata.CameraSerial = values[0xa431]
 		drMetadata.LensNotes = values[0xa432]
+		drMetadata.LensType = values[0xa434]
 		drMetadata.LensNumber = values[0xa435]
 	}
 	if makerTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s", exif.MakerIFD, exif.Panasonic)]; ok {
@@ -156,7 +157,7 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 			tag := makerTags[i]
 			if tag.ID == 0x7 {
 				drMetadata.CameraFirmware = tag.Value
-			} else if tag.ID == 0x95 && drMetadata.LensType == "" {
+			} else if drMetadata.LensType == "" && tag.ID == 0x95 {
 				drMetadata.LensType = tag.Value
 			}
 		}
