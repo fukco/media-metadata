@@ -79,6 +79,7 @@ func drMetadataFromSonyRTMD(rtmd *sony.RTMD, drMetadata *DRMetadata) error {
 }
 
 func drMetadataFromPanasonicXML(xml *panasonic.ClipMain, drMetadata *DRMetadata) error {
+	drMetadata.ISO = xml.UserArea.AcquisitionMetadata.CameraUnitMetadata.ISOSensitivity
 	drMetadata.CameraFps = xml.ClipContent.EssenceList.Video.FrameRate
 	drMetadata.GammaNotes = xml.UserArea.AcquisitionMetadata.CameraUnitMetadata.Gamma.CaptureGamma
 	drMetadata.ColorSpaceNotes = xml.UserArea.AcquisitionMetadata.CameraUnitMetadata.Gamut.CaptureGamut
@@ -99,26 +100,24 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 		}
 	}
 	if exifTags, ok := exifMeta.Tags[string(exif.Group_Exif)]; ok {
+		values := make(map[uint16]string, len(exifTags))
 		for i := range exifTags {
 			tag := exifTags[i]
 			if !tag.Undefined {
-				if tag.ID == 0x829a {
-					drMetadata.Shutter = tag.Value
-				} else if tag.ID == 0x829d {
-					drMetadata.CameraAperture = tag.Value
-				} else if tag.ID == 0x8827 {
-					drMetadata.ISO = tag.Value
-				} else if tag.ID == 0x920a {
-					drMetadata.FocalPoint = tag.Value
-				} else if tag.ID == 0xa431 {
-					drMetadata.CameraSerial = tag.Value
-				} else if tag.ID == 0xa432 {
-					drMetadata.LensNotes = tag.Value
-				} else if tag.ID == 0xa435 {
-					drMetadata.LensNumber = tag.Value
-				}
+				values[tag.ID] = tag.Value
 			}
 		}
+		drMetadata.Shutter = values[0x829a]
+		drMetadata.CameraAperture = values[0x829d]
+		if value, ok := values[0x8831]; ok {
+			drMetadata.ISO = value
+		} else if values[0x8830] == "Standard Output Sensitivity" {
+			drMetadata.ISO = values[0x8827]
+		}
+		drMetadata.FocalPoint = values[0x920a]
+		drMetadata.CameraSerial = values[0xa431]
+		drMetadata.LensNotes = values[0xa432]
+		drMetadata.LensNumber = values[0xa435]
 	}
 	if makerTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s", exif.MakerIFD, exif.Panasonic)]; ok {
 		for i := range makerTags {
@@ -163,12 +162,15 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 		}
 	}
 	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.Group_Canon_Shot_Info)]; ok {
+		values := make(map[uint16]string, len(makerSubTags))
 		for i := range makerSubTags {
 			tag := makerSubTags[i]
-			if tag.ID == 28 {
-				drMetadata.NdFilter = tag.Value
-			}
+			values[tag.ID] = tag.Value
 		}
+		drMetadata.NdFilter = values[28]
+		autoISO, _ := strconv.ParseInt(values[1], 10, 64)
+		baseISO, _ := strconv.ParseInt(values[2], 10, 64)
+		drMetadata.ISO = fmt.Sprintf("%d", baseISO/autoISO*100)
 	}
 	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.Group_Canon_Processing_Info)]; ok {
 		for i := range makerSubTags {

@@ -3,6 +3,7 @@ package exif
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -55,6 +56,29 @@ var exifTagDefinitionMap = map[uint16]*TagDefinition{
 		}
 	}},
 	0x8827: {Name: "Photographic Sensitivity"},
+	0x8830: {Name: "Sensitivity Type", Fn: func(v interface{}) string {
+		data := v.(int64)
+		switch data {
+		case 0:
+			return "Unknown"
+		case 1:
+			return "Standard Output Sensitivity"
+		case 2:
+			return "Recommended Exposure Index"
+		case 3:
+			return "ISO Speed"
+		case 4:
+			return "Standard Output Sensitivity and Recommended Exposure Index"
+		case 5:
+			return "Standard Output Sensitivity and ISO Speed"
+		case 6:
+			return "Recommended Exposure Index and ISO Speed"
+		case 7:
+			return "Standard Output Sensitivity, Recommended Exposure Index and ISO Speed"
+		default:
+			return "Reserved"
+		}
+	}},
 	0x8831: {Name: "Standard Output Sensitivity"},
 	0x9204: {Name: "Exposure bias", Fn: func(v interface{}) string {
 		data := v.([]int64)
@@ -847,6 +871,16 @@ var canonSubTagDefinitionMap = map[string]*SubTagDefinition{
 	},
 	string(Group_Canon_Shot_Info): {tagDefinitionType: byIndex,
 		subTagDefinitionMap: map[interface{}]*TagDefinition{
+			1: {Name: "Auto ISO", Fn: func(v interface{}) string {
+				data := v.(int64)
+				value := math.Exp(float64(data)/32*math.Log(2)) * 100
+				return fmt.Sprintf("%.0f", value)
+			}},
+			2: {Name: "Base ISO", Fn: func(v interface{}) string {
+				data := v.(int64)
+				value := math.Exp(float64(data)/32*math.Log(2)) * 100 / 32
+				return fmt.Sprintf("%.0f", value)
+			}},
 			7: {Name: "WhiteBalance", Fn: func(v interface{}) string {
 				switch v.(int64) {
 				case 0:
