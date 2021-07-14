@@ -201,6 +201,12 @@ func drMetadataFromMetadataItems(metadataItems *quicktime.MetadataItems, drMetad
 	if value, ok := itemsMap["com.atomos.hdr.monitormode"]; ok {
 		drMetadata.CameraNotes = fmt.Sprintf("MonitorMode: %s", value)
 	}
+	if value, ok := itemsMap["com.atomos.hdr.range"]; ok {
+		if drMetadata.CameraNotes != "" {
+			drMetadata.CameraNotes = fmt.Sprintf("%s\nRange: %s", drMetadata.CameraNotes, value)
+		}
+		drMetadata.CameraNotes = fmt.Sprintf("Range: %s", value)
+	}
 	if value, ok := itemsMap["com.atomos.hdr.gamut"]; ok {
 		drMetadata.ColorSpaceNotes = value
 	}
