@@ -485,8 +485,8 @@ var fujiExifTagDefinitionMap = map[uint16]*TagDefinition{
 }
 
 var canonExifTagDefinitionMap = map[uint16]*TagDefinition{
-	0x1:  {Name: string(Group_Canon_Camera_Settings), SubTagDefinition: canonSubTagDefinitionMap[string(Group_Canon_Camera_Settings)]},
-	0x4:  {Name: string(Group_Canon_Shot_Info), SubTagDefinition: canonSubTagDefinitionMap[string(Group_Canon_Shot_Info)]},
+	0x1:  {Name: string(GroupCanonCameraSettings), SubTagDefinition: canonSubTagDefinitionMap[string(GroupCanonCameraSettings)]},
+	0x4:  {Name: string(GroupCanonShotInfo), SubTagDefinition: canonSubTagDefinitionMap[string(GroupCanonShotInfo)]},
 	0x6:  {Name: "Canon Image Type"},
 	0x7:  {Name: "Canon Firmware Version"},
 	0x10: {Name: "Canon Model ID"}, // Ref:https://exiftool.org/TagNames/Canon.html#CanonModelID
@@ -510,11 +510,11 @@ var canonExifTagDefinitionMap = map[uint16]*TagDefinition{
 		return ""
 	}},
 	0x96: {Name: "Internal Serial Number"},
-	0xa0: {Name: string(Group_Canon_Processing_Info), SubTagDefinition: canonSubTagDefinitionMap[string(Group_Canon_Processing_Info)]},
+	0xa0: {Name: string(GroupCanonProcessingInfo), SubTagDefinition: canonSubTagDefinitionMap[string(GroupCanonProcessingInfo)]},
 }
 
 var canonSubTagDefinitionMap = map[string]*SubTagDefinition{
-	string(Group_Canon_Camera_Settings): {tagDefinitionType: byIndex,
+	string(GroupCanonCameraSettings): {tagDefinitionType: byIndex,
 		subTagDefinitionMap: map[interface{}]*TagDefinition{
 			7: {Name: "Focus Mode", Fn: func(v interface{}) string {
 				switch v.(int64) {
@@ -870,7 +870,7 @@ var canonSubTagDefinitionMap = map[string]*SubTagDefinition{
 			}},
 		},
 	},
-	string(Group_Canon_Shot_Info): {tagDefinitionType: byIndex,
+	string(GroupCanonShotInfo): {tagDefinitionType: byIndex,
 		subTagDefinitionMap: map[interface{}]*TagDefinition{
 			1: {Name: "Auto ISO", Fn: func(v interface{}) string {
 				data := v.(int64)
@@ -953,7 +953,7 @@ var canonSubTagDefinitionMap = map[string]*SubTagDefinition{
 			}},
 		},
 	},
-	string(Group_Canon_Processing_Info): {tagDefinitionType: byIndex,
+	string(GroupCanonProcessingInfo): {tagDefinitionType: byIndex,
 		subTagDefinitionMap: map[interface{}]*TagDefinition{
 			9: {Name: "Color Temperature"},
 			10: {Name: "Picture Style", Fn: func(v interface{}) string {

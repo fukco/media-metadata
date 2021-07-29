@@ -2,8 +2,10 @@ package main
 
 /*
 #include <stdio.h>
+#include <stdbool.h>
 struct DRMetadata
 {
+	bool IsSupportMedia;
 	char *CameraType;
 	char *CameraManufacturer;
 	char *CameraSerial;
@@ -27,7 +29,7 @@ struct DRMetadata
 	char *FocalPoint;
 	char *Distance;
 	char *Filter;
-	char *NdFilter;
+	char *NDFilter;
 	char *CompressionRatio;
 	char *CodecBitrate;
 	char *AspectRatioNotes;
@@ -204,7 +206,10 @@ func drProcessMediaFile(absPath string) *output.DRMetadata {
 func DRProcessMediaFile(absPath *C.char) C.struct_DRMetadata {
 	drMetadata := drProcessMediaFile(C.GoString(absPath))
 	var result C.struct_DRMetadata
-	if drMetadata != nil {
+	if drMetadata == nil {
+		result.IsSupportMedia = C._Bool(false)
+	} else {
+		result.IsSupportMedia = C._Bool(true)
 		result.CameraType = C.CString(drMetadata.CameraType)
 		result.CameraManufacturer = C.CString(drMetadata.CameraManufacturer)
 		result.CameraSerial = C.CString(drMetadata.CameraSerial)
@@ -228,7 +233,7 @@ func DRProcessMediaFile(absPath *C.char) C.struct_DRMetadata {
 		result.FocalPoint = C.CString(drMetadata.FocalPoint)
 		result.Distance = C.CString(drMetadata.Distance)
 		result.Filter = C.CString(drMetadata.Filter)
-		result.NdFilter = C.CString(drMetadata.NdFilter)
+		result.NDFilter = C.CString(drMetadata.NDFilter)
 		result.CompressionRatio = C.CString(drMetadata.CompressionRatio)
 		result.CodecBitrate = C.CString(drMetadata.CodecBitrate)
 		result.AspectRatioNotes = C.CString(drMetadata.AspectRatioNotes)

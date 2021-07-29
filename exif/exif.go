@@ -26,20 +26,20 @@ const (
 type DirectoryType string
 
 const (
-	IFD0     = DirectoryType(Group_IFD0)
-	ExifIFD  = DirectoryType(Group_Exif)
-	IFD1     = DirectoryType(Group_IFD1)
-	MakerIFD = DirectoryType(Group_MakerNotes)
+	IFD0     = DirectoryType(GroupIFD0)
+	ExifIFD  = DirectoryType(GroupExif)
+	IFD1     = DirectoryType(GroupIFD1)
+	MakerIFD = DirectoryType(GroupMakerNotes)
 )
 
 type GroupName string
 
 const (
-	Group_IFD0                  GroupName = "IFD0"
-	Group_IFD1                  GroupName = "IFD1"
-	Group_Exif                  GroupName = "ExifIFD"
-	Group_MakerNotes            GroupName = "Maker"
-	Group_Canon_Camera_Settings GroupName = "Canon CameraSettings"
-	Group_Canon_Shot_Info       GroupName = "Canon ShotInfo"
-	Group_Canon_Processing_Info GroupName = "Processing Info"
+	GroupIFD0                GroupName = "IFD0"
+	GroupIFD1                GroupName = "IFD1"
+	GroupExif                GroupName = "ExifIFD"
+	GroupMakerNotes          GroupName = "Maker"
+	GroupCanonCameraSettings GroupName = "Canon CameraSettings"
+	GroupCanonShotInfo       GroupName = "Canon ShotInfo"
+	GroupCanonProcessingInfo GroupName = "Processing Info"
 )

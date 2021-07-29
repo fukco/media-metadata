@@ -37,7 +37,7 @@ type DRMetadata struct {
 	FocalPoint         string `csv:"Focal Point (mm)"`
 	Distance           string `csv:"Distance"`
 	Filter             string `csv:"Filter"`
-	NdFilter           string `csv:"ND Filter"`
+	NDFilter           string `csv:"ND Filter"`
 	CompressionRatio   string `csv:"Compression Ratio"`
 	CodecBitrate       string `csv:"Codec Bitrate"`
 	AspectRatioNotes   string `csv:"Aspect Ratio Notes"`
@@ -87,7 +87,7 @@ func drMetadataFromPanasonicXML(xml *panasonic.ClipMain, drMetadata *DRMetadata)
 }
 
 func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
-	if ifd0Tags, ok := exifMeta.Tags[string(exif.Group_IFD0)]; ok {
+	if ifd0Tags, ok := exifMeta.Tags[string(exif.GroupIFD0)]; ok {
 		for i := range ifd0Tags {
 			tag := ifd0Tags[i]
 			if !tag.Undefined {
@@ -99,7 +99,7 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 			}
 		}
 	}
-	if exifTags, ok := exifMeta.Tags[string(exif.Group_Exif)]; ok {
+	if exifTags, ok := exifMeta.Tags[string(exif.GroupExif)]; ok {
 		values := make(map[uint16]string, len(exifTags))
 		for i := range exifTags {
 			tag := exifTags[i]
@@ -134,7 +134,7 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 			} else if tag.ID == 0x52 {
 				drMetadata.LensNumber = tag.Value
 			} else if tag.ID == 0x9d {
-				drMetadata.NdFilter = tag.Value
+				drMetadata.NDFilter = tag.Value
 			} else if tag.ID == 0x9f {
 				drMetadata.ShutterType = tag.Value
 			}
@@ -162,18 +162,18 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 			}
 		}
 	}
-	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.Group_Canon_Shot_Info)]; ok {
+	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.GroupCanonShotInfo)]; ok {
 		values := make(map[uint16]string, len(makerSubTags))
 		for i := range makerSubTags {
 			tag := makerSubTags[i]
 			values[tag.ID] = tag.Value
 		}
-		drMetadata.NdFilter = values[28]
+		drMetadata.NDFilter = values[28]
 		autoISO, _ := strconv.ParseInt(values[1], 10, 64)
 		baseISO, _ := strconv.ParseInt(values[2], 10, 64)
 		drMetadata.ISO = fmt.Sprintf("%d", baseISO/autoISO*100)
 	}
-	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.Group_Canon_Processing_Info)]; ok {
+	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.GroupCanonProcessingInfo)]; ok {
 		for i := range makerSubTags {
 			tag := makerSubTags[i]
 			if tag.ID == 9 {
