@@ -1,0 +1,54 @@
+name: build
+
+on: push
+
+jobs:
+  my-job:
+    strategy:
+      fail-fast: false
+      matrix:
+        go_version:
+          - 1.17.1
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: Golang CGO cross compiler executable file
+        uses: crazy-max/ghaction-xgo@latest
+        with:
+          #                    xgo_version: latest
+          go_version: ${{ matrix.go_version }}
+          dest: build
+          prefix: resolve-metadata
+          targets: windows/amd64,darwin/amd64
+          v: true
+          x: false
+          race: false
+          ldflags: -s -w
+          buildmode: default
+
+      - name: Golang CGO cross compiler dynamic link library
+        uses: crazy-max/ghaction-xgo@v1.6.1
+        with:
+          #                    xgo_version: latest
+          go_version: ${{ matrix.go_version }}
+          dest: build
+          prefix: resolve-metadata
+          targets: windows/amd64,darwin/amd64
+          v: false
+          x: false
+          race: false
+          ldflags: -s -w
+          buildmode: c-shared
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: my-artifact
+          path: build
+
+#      - name: Release
+#        uses: softprops/action-gh-release@v1
+#        if: startsWith(github.ref, 'refs/tags/')
+#        with:
+#          files: build/resolve-metadata*
