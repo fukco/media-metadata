@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Golang CGO cross compiler executable file
-        uses: crazy-max/ghaction-xgo@latest
+        uses: crazy-max/ghaction-xgo@v1
         with:
           #                    xgo_version: latest
           go_version: ${{ matrix.go_version }}
