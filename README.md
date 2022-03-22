@@ -45,37 +45,39 @@ quicktime(.mov)
 mpeg-4(.mp4)
 
 ## DaVinci Resolve fields
-|  字段   | 中文显示  |
-|  ----  | ----  |
-| Camera Type | 摄影机类型 |
-| Camera Manufacturer | 摄影机生产厂商 |
-| Camera Serial # | 摄影机序列号 |
-| Camera ID | 摄影机ID |
-| Camera Notes | 摄影机备注 |
-| Camera Format | 摄影机格式 |
-| Media Type | 媒体类型 |
-| Time-lapse Interval | 延时摄影区间 |
-| Camera FPS | 摄影机帧速率 |
-| Shutter Type | 快门类型 |
-| Shutter | 快门 |
-| ISO | ISO |
-| White Point (Kelvin) | 白点（开尔文） |
-| White Balance Tint | 白平衡色调 |
-| Camera Firmware | 摄影机固件 |
-| Lens Type | 摄影机镜头类型 |
-| Lens Number | 摄影机镜头号码 |
-| Lens Notes | 摄影机镜头备注 |
-| Camera Aperture Type | 摄影机光圈类型 |
-| Camera Aperture | 摄影机光圈 |
-| Focal Point (mm) | 焦点（毫米） |
-| Distance | 距离 |
-| Filter | 滤镜 |
-| ND Filter | 中性密度滤镜 |
-| Compression Ratio | 压缩比 |
-| Codec Bitrate | 编解码比特率 |
-| Aspect Ratio Notes | 宽高比备注 |
-| Gamma Notes | Gamma备注 |
-| Color Space Notes | 色彩空间备注 |
+| 字段                   | 中文显示      |
+|----------------------|-----------|
+| Camera Type          | 摄影机类型     |
+| Camera Manufacturer  | 摄影机生产厂商   |
+| Camera Serial #      | 摄影机序列号    |
+| Camera ID            | 摄影机ID     |
+| Camera Notes         | 摄影机备注     |
+| Camera Format        | 摄影机格式     |
+| Media Type           | 媒体类型      |
+| Time-lapse Interval  | 延时摄影区间    |
+| Camera FPS           | 摄影机帧速率    |
+| Shutter Type         | 快门类型      |
+| Shutter              | 快门        |
+| ISO                  | ISO       |
+| White Point (Kelvin) | 白点（开尔文）   |
+| White Balance Tint   | 白平衡色调     |
+| Camera Firmware      | 摄影机固件     |
+| Lens Type            | 摄影机镜头类型   |
+| Lens Number          | 摄影机镜头号码   |
+| Lens Notes           | 摄影机镜头备注   |
+| Camera Aperture Type | 摄影机光圈类型   |
+| Camera Aperture      | 摄影机光圈     |
+| Focal Point (mm)     | 焦点（毫米）    |
+| Distance             | 距离        |
+| Filter               | 滤镜        |
+| ND Filter            | 中性密度滤镜    |
+| Compression Ratio    | 压缩比       |
+| Codec Bitrate        | 编解码比特率    |
+| Sensor Area Captured | 捕捉到的传感器范围 |
+| PAR Notes            | 像素宽高比备注   |
+| Aspect Ratio Notes   | 宽高比备注     |
+| Gamma Notes          | Gamma备注   |
+| Color Space Notes    | 色彩空间备注    |
 
 ## 其他
 1. csv文件导出的方式再导入达芬奇不支持默认的时间码匹配规则，需要选择文件名匹配

@@ -8,34 +8,20 @@ jobs:
       fail-fast: false
       matrix:
         go_version:
-          - 1.17.1
+          - 1.17.2
     runs-on: ubuntu-latest
     steps:
       - name: checkout
         uses: actions/checkout@v2
 
-      - name: Golang CGO cross compiler executable file
+      - name: Golang CGO cross compiler dynamic link library
         uses: crazy-max/ghaction-xgo@v1
         with:
-          #                    xgo_version: latest
+          xgo_version: latest
           go_version: ${{ matrix.go_version }}
           dest: build
           prefix: resolve-metadata
-          targets: windows/amd64,darwin/amd64
-          v: true
-          x: false
-          race: false
-          ldflags: -s -w
-          buildmode: default
-
-      - name: Golang CGO cross compiler dynamic link library
-        uses: crazy-max/ghaction-xgo@v1.6.1
-        with:
-          #                    xgo_version: latest
-          go_version: ${{ matrix.go_version }}
-          dest: build
-          prefix: resolve-metadata
-          targets: windows/amd64,darwin/amd64
+          targets: windows/amd64,darwin/amd64,darwin/arm64
           v: false
           x: false
           race: false

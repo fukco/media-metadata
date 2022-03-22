@@ -1,4 +1,4 @@
-package sony
+package rtmd
 
 import (
 	"encoding/binary"
@@ -63,7 +63,9 @@ var rtmdMap map[tagName]func(tag *tag, rtmd *RTMD) error
 // 8116,  "Gamma for CDL"
 // 8117,  "ASC CDL V1.2"
 // 8118,  "ColorMatrix"
-//
+// 8119?
+// 811E?
+
 // UserDefinedAcquisitionMetadata
 // 8007, "Lens Attributes"
 // E000, "UDAM Set Identifier" 10 bytes
@@ -79,6 +81,10 @@ var rtmdMap map[tagName]func(tag *tag, rtmd *RTMD) error
 // E201, "Cooke Protocol Binary Metadata"
 // E202, "Cooke Protocol User Metadata"
 // E203, "Cooke Protocol Calibration Type"
+// E300?
+// E301?
+// E303, "Lighting Preset"
+// E304, "Current record date and time"
 func init() {
 	rtmdMap = make(map[tagName]func(*tag, *RTMD) error, 32)
 	// Lens Unit Metadata
@@ -104,14 +110,14 @@ func init() {
 	rtmdMap[tagName{0x32, 0x10}] = processCaptureGammaEquation
 	rtmdMap[tagName{0x32, 0x19}] = processColorPrimaries
 	rtmdMap[tagName{0x32, 0x1a}] = processCodingEquations
+	rtmdMap[tagName{0xe3, 0x03}] = processLightingPreset
 	// User Defined Acquisition Metadata
 	rtmdMap[tagName{0xe0, 0x00}] = processUDAMId
-	rtmdMap[tagName{0xe3, 0x03}] = processWB
 }
 
 func processIrisFNumber(tag *tag, rtmd *RTMD) error {
 	data := binary.BigEndian.Uint16(tag.data)
-	rtmd.LensUnitMetadata.IrisFNumber = math.Pow(2, (1 - float64(data)/0x10000)*8)
+	rtmd.LensUnitMetadata.IrisFNumber = math.Pow(2, (1-float64(data)/0x10000)*8)
 	return nil
 }
 
@@ -121,12 +127,14 @@ func processFocusPositionFromImagePlane(tag *tag, rtmd *RTMD) error {
 }
 
 func processLensZoom35mm(tag *tag, rtmd *RTMD) error {
-	rtmd.LensUnitMetadata.LensZoom35mm = commonDistanceFormat(tag.data)
+	result := commonDistanceFormat(tag.data)
+	rtmd.LensUnitMetadata.LensZoom35mmPtr = &result
 	return nil
 }
 
 func processLensZoom(tag *tag, rtmd *RTMD) error {
-	rtmd.LensUnitMetadata.LensZoom = commonDistanceFormat(tag.data)
+	result := commonDistanceFormat(tag.data)
+	rtmd.LensUnitMetadata.LensZoomPtr = &result
 	return nil
 }
 
@@ -207,12 +215,12 @@ func processExposureIndexOfPhotoMeter(tag *tag, rtmd *RTMD) error {
 }
 
 func processCaptureGammaEquation(tag *tag, rtmd *RTMD) error {
-	// TODO same as xml file description, low priority
+	rtmd.CameraUnitMetadata.CaptureGammaEquation = GammaEquation(tag.data).String()
 	return nil
 }
 
 func processColorPrimaries(tag *tag, rtmd *RTMD) error {
-	// TODO same as xml file description, low priority
+	rtmd.CameraUnitMetadata.ColorPrimaries = ColorPrimaries(tag.data).String()
 	return nil
 }
 
@@ -221,18 +229,16 @@ func processCodingEquations(tag *tag, rtmd *RTMD) error {
 	return nil
 }
 
+func processLightingPreset(tag *tag, rtmd *RTMD) error {
+	rtmd.CameraUnitMetadata.LightingPreset = LightingPreset(tag.data[0]).String()
+	return nil
+}
+
 func processUDAMId(tag *tag, rtmd *RTMD) error {
 	if len(rtmd.UserDefinedAcquisitionMetadataSlice) > 0 {
 		metadata := rtmd.UserDefinedAcquisitionMetadataSlice[len(rtmd.UserDefinedAcquisitionMetadataSlice)-1]
 		metadata.ID = tag.data
 	}
-	return nil
-}
-
-// TODO what's difference between e810d(AutoWhiteBalanceMode from EBU-TECH3349) and e303(White Balance found here:https://exiftool.org/forum/index.php?topic=12218)
-// In SONY Catalyst Browse, i guess they called 'Auto white balance mode' and '光照预设'(something like 'light preset') in chinese
-// PS. I don't know how to change the Catalyst Browse's language.
-func processWB(tag *tag, rtmd *RTMD) error {
 	return nil
 }
 

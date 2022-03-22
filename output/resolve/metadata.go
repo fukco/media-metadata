@@ -1,12 +1,14 @@
-package output
+package resolve
 
 import (
 	"fmt"
 	"github.com/fukco/media-meta-parser/exif"
 	"github.com/fukco/media-meta-parser/manufacturer/panasonic"
-	"github.com/fukco/media-meta-parser/manufacturer/sony"
+	"github.com/fukco/media-meta-parser/manufacturer/sony/nrtmd"
+	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/quicktime"
+	"github.com/fukco/media-meta-parser/metadata"
+	"github.com/fukco/media-meta-parser/mp4/box"
 	"strconv"
 )
 
@@ -40,23 +42,25 @@ type DRMetadata struct {
 	NDFilter           string `csv:"ND Filter"`
 	CompressionRatio   string `csv:"Compression Ratio"`
 	CodecBitrate       string `csv:"Codec Bitrate"`
+	SensorAreaCaptured string `csv:"Sensor Area Captured"`
+	PARNotes           string `csv:"PAR Notes"`
 	AspectRatioNotes   string `csv:"Aspect Ratio Notes"`
 	GammaNotes         string `csv:"Gamma Notes"`
 	ColorSpaceNotes    string `csv:"Color Space Notes"`
 }
 
-func drMetadataFromSonyXML(xml *sony.NonRealTimeMeta, drMetadata *DRMetadata) error {
+func drMetadataFromSonyXML(xml *nrtmd.NonRealTimeMeta, drMetadata *DRMetadata) error {
 	drMetadata.CameraType = xml.Device.ModelName
-	drMetadata.CameraFps = xml.VideoFormat.VideoFrame.CaptureFps
+	drMetadata.CameraFps = xml.VideoFormat.VideoFrame.FormatFps
 	drMetadata.CameraManufacturer = xml.Device.Manufacturer
 	drMetadata.CameraSerial = xml.Device.SerialNo
 	drMetadata.AspectRatioNotes = xml.VideoFormat.VideoLayout.AspectRatio
 	for _, group := range xml.AcquisitionRecord.Groups {
-		if group.Name == sony.CameraUnitMetadataSet {
+		if group.Name == nrtmd.CameraUnitMetadataSet {
 			for _, item := range group.Items {
-				if item.Name == sony.CaptureGammaEquation {
+				if item.Name == nrtmd.CaptureGammaEquation {
 					drMetadata.GammaNotes = item.Value
-				} else if item.Name == sony.CaptureColorPrimaries {
+				} else if item.Name == nrtmd.CaptureColorPrimaries {
 					drMetadata.ColorSpaceNotes = item.Value
 				}
 			}
@@ -65,11 +69,14 @@ func drMetadataFromSonyXML(xml *sony.NonRealTimeMeta, drMetadata *DRMetadata) er
 	return nil
 }
 
-func drMetadataFromSonyRTMD(rtmd *sony.RTMD, drMetadata *DRMetadata) error {
+func drMetadataFromSonyRTMD(rtmd *rtmd.RTMD, drMetadata *DRMetadata) error {
 	drMetadata.Shutter = rtmd.CameraUnitMetadata.ShutterSpeedTime.String()
 	drMetadata.ISO = strconv.Itoa(int(rtmd.CameraUnitMetadata.ISOSensitivity))
 	drMetadata.CameraAperture = fmt.Sprintf("%.1f", rtmd.LensUnitMetadata.IrisFNumber)
-	drMetadata.FocalPoint = fmt.Sprintf("%.0f mm", rtmd.LensUnitMetadata.LensZoom*1000)
+	if rtmd.LensUnitMetadata.LensZoomPtr != nil {
+		drMetadata.FocalPoint = fmt.Sprintf("%.0f", *rtmd.LensUnitMetadata.LensZoomPtr*1000)
+	}
+	drMetadata.SensorAreaCaptured = fmt.Sprintf("%dμm * %dμm", rtmd.CameraUnitMetadata.ImagerDimensionWidth, rtmd.CameraUnitMetadata.ImagerDimensionHeight)
 	if rtmd.LensUnitMetadata.FocusRingPosition == 0xffff {
 		drMetadata.Distance = "infinity"
 	} else {
@@ -184,7 +191,7 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 	return nil
 }
 
-func drMetadataFromMetadataItems(metadataItems *quicktime.MetadataItems, drMetadata *DRMetadata) error {
+func drMetadataFromMetadataItems(metadataItems *metadata.Items, drMetadata *DRMetadata) error {
 	itemsMap := metadataItems.MetadataItems
 	if value, ok := itemsMap["com.apple.proapps.image.{TIFF}.Software"]; ok {
 		drMetadata.CameraFirmware = value
@@ -216,16 +223,22 @@ func drMetadataFromMetadataItems(metadataItems *quicktime.MetadataItems, drMetad
 	return nil
 }
 
+func drMetadataFromUuidProfile(profile *box.Profile, drMetadata *DRMetadata) error {
+	drMetadata.CodecBitrate = profile.VideoProfile.VideoAvgBitrate
+	drMetadata.PARNotes = profile.VideoProfile.PixelAspectRatio
+	return nil
+}
+
 func DRMetadataFromMeta(meta *media.Meta, csv *DRMetadata) error {
 	for i := range meta.Items {
 		item := meta.Items[i]
 		switch item.(type) {
-		case *sony.NonRealTimeMeta:
-			if err := drMetadataFromSonyXML(item.(*sony.NonRealTimeMeta), csv); err != nil {
+		case *nrtmd.NonRealTimeMeta:
+			if err := drMetadataFromSonyXML(item.(*nrtmd.NonRealTimeMeta), csv); err != nil {
 				return err
 			}
-		case *sony.RTMD:
-			if err := drMetadataFromSonyRTMD(item.(*sony.RTMD), csv); err != nil {
+		case *rtmd.RTMD:
+			if err := drMetadataFromSonyRTMD(item.(*rtmd.RTMD), csv); err != nil {
 				return err
 			}
 		case *panasonic.ClipMain:
@@ -236,8 +249,12 @@ func DRMetadataFromMeta(meta *media.Meta, csv *DRMetadata) error {
 			if err := drMetadataFromExif(item.(*exif.ExifMeta), csv); err != nil {
 				return err
 			}
-		case *quicktime.MetadataItems:
-			if err := drMetadataFromMetadataItems(item.(*quicktime.MetadataItems), csv); err != nil {
+		case *metadata.Items:
+			if err := drMetadataFromMetadataItems(item.(*metadata.Items), csv); err != nil {
+				return err
+			}
+		case *box.Profile:
+			if err := drMetadataFromUuidProfile(item.(*box.Profile), csv); err != nil {
 				return err
 			}
 		}

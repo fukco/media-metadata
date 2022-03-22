@@ -1,4 +1,4 @@
-package sony
+package rtmd
 
 import (
 	"bytes"
@@ -14,11 +14,11 @@ const (
 	lensUnitMetadataSet               metadataSetType = "LensUnitMetadata"
 	cameraUnitMetadataSet             metadataSetType = "CameraUnitMetadata"
 	userDefinedAcquisitionMetadataSet metadataSetType = "UserDefinedAcquisitionMetadata"
-	undefined                         metadataSetType = "undefined"
 )
 
 // RTMD Reference: EBU TECH-3349
 type RTMD struct {
+	Timecode                            *Timecode
 	LensUnitMetadata                    *LensUnitMetadata
 	CameraUnitMetadata                  *CameraUnitMetadata
 	UserDefinedAcquisitionMetadataSlice []*UserDefinedAcquisitionMetadata
@@ -28,8 +28,8 @@ type LensUnitMetadata struct {
 	IrisFNumber                 float64
 	FocusPositionFromImagePlane float64
 	FocusRingPosition           uint16
-	LensZoom35mm                float64
-	LensZoom                    float64
+	LensZoom35mmPtr             *float64
+	LensZoomPtr                 *float64
 	ZoomRingPosition            uint16
 	unKnownTags                 []*tag
 }
@@ -50,7 +50,27 @@ type CameraUnitMetadata struct {
 	CaptureGammaEquation            string
 	ColorPrimaries                  string
 	CodingEquations                 string
+	LightingPreset                  string
 	unKnownTags                     []*tag
+}
+
+type Timecode struct {
+	Hour  int
+	Min   int
+	Sec   int
+	Frame int
+}
+
+func (t Timecode) String() string {
+	if t.Frame < 10 {
+		return fmt.Sprintf("%2d:%2d:%2d:%2d", t.Hour, t.Min, t.Sec, t.Frame)
+	}
+	return fmt.Sprintf("%2d:%2d:%2d:%d", t.Hour, t.Min, t.Sec, t.Frame)
+}
+
+type UserDefinedAcquisitionMetadata struct {
+	ID          []byte
+	unKnownTags []*tag
 }
 
 type Fraction struct {
@@ -62,11 +82,6 @@ type Fraction struct {
 
 func (receiver Fraction) String() string {
 	return fmt.Sprintf("%d/%d", receiver.Numerator, receiver.Denominator)
-}
-
-type UserDefinedAcquisitionMetadata struct {
-	ID          []byte
-	unKnownTags []*tag
 }
 
 type MetadataSetInfo struct {
@@ -86,16 +101,14 @@ func ReadRTMD(r io.ReadSeeker) (*RTMD, error) {
 		CameraUnitMetadata:                  &CameraUnitMetadata{unKnownTags: make([]*tag, 0, 16)},
 		UserDefinedAcquisitionMetadataSlice: make([]*UserDefinedAcquisitionMetadata, 0, 16),
 	}
-	infos, err := readRTMDLayout(r)
+	infos, err := readRTMDLayout(r, rtmd)
 	if err != nil {
 		return nil, err
 	}
 
-	structure := bytes.NewBuffer(make([]byte, 0, 1024))
+	buf := bytes.NewBuffer([]byte{})
 	for i := range infos {
 		switch infos[i].name {
-		case string(undefined):
-			continue
 		case string(userDefinedAcquisitionMetadataSet):
 			rtmd.UserDefinedAcquisitionMetadataSlice = append(rtmd.UserDefinedAcquisitionMetadataSlice,
 				&UserDefinedAcquisitionMetadata{unKnownTags: make([]*tag, 0, 16)})
@@ -103,33 +116,36 @@ func ReadRTMD(r io.ReadSeeker) (*RTMD, error) {
 		if _, err := r.Seek(infos[i].bodyOffset, io.SeekStart); err != nil {
 			return nil, err
 		}
-		structure.Reset()
-		if _, err := io.CopyN(structure, r, int64(infos[i].bodyLength)); err != nil {
+		if _, err := io.CopyN(buf, r, int64(infos[i].bodyLength)); err != nil {
 			return nil, err
 		}
+		content := buf.Next(int(infos[i].bodyLength))
 		var n uint16 = 0
 		for {
 			if n >= infos[i].bodyLength {
 				break
 			}
-			tag := &tag{}
-			tag.name = tagName{structure.Bytes()[n], structure.Bytes()[n+1]}
-			size := binary.BigEndian.Uint16(structure.Bytes()[n+2 : n+4])
-			tag.data = structure.Bytes()[n+4 : n+4+size]
+			myTag := &tag{}
+			myTag.name = tagName{content[n], content[n+1]}
+			size := binary.BigEndian.Uint16(content[n+2 : n+4])
+
+			tagData := make([]byte, size)
+			copy(tagData, content[n+4:n+4+size])
+			myTag.data = tagData
 			n += size + 4
-			if f, ok := rtmdMap[tag.name]; ok {
-				if err := f(tag, rtmd); err != nil {
+			if f, ok := rtmdMap[myTag.name]; ok {
+				if err := f(myTag, rtmd); err != nil {
 					return nil, err
 				}
 			} else {
 				switch infos[i].name {
 				case string(lensUnitMetadataSet):
-					rtmd.LensUnitMetadata.unKnownTags = append(rtmd.LensUnitMetadata.unKnownTags, tag)
+					rtmd.LensUnitMetadata.unKnownTags = append(rtmd.LensUnitMetadata.unKnownTags, myTag)
 				case string(cameraUnitMetadataSet):
-					rtmd.CameraUnitMetadata.unKnownTags = append(rtmd.CameraUnitMetadata.unKnownTags, tag)
+					rtmd.CameraUnitMetadata.unKnownTags = append(rtmd.CameraUnitMetadata.unKnownTags, myTag)
 				case string(userDefinedAcquisitionMetadataSet):
 					unKnownTags := &rtmd.UserDefinedAcquisitionMetadataSlice[len(rtmd.UserDefinedAcquisitionMetadataSlice)-1].unKnownTags
-					*unKnownTags = append(*unKnownTags, tag)
+					*unKnownTags = append(*unKnownTags, myTag)
 				}
 			}
 		}
@@ -137,33 +153,29 @@ func ReadRTMD(r io.ReadSeeker) (*RTMD, error) {
 	return rtmd, nil
 }
 
-func readRTMDLayout(r io.ReadSeeker) ([]*MetadataSetInfo, error) {
-	header := make([]byte, 2)
-	if _, err := r.Read(header); err != nil {
+func readRTMDLayout(r io.ReadSeeker, rtmd *RTMD) ([]*MetadataSetInfo, error) {
+	buf := bytes.NewBuffer([]byte{})
+	if _, err := io.CopyN(buf, r, 28); err != nil {
 		return nil, err
 	}
-	if _, err := r.Seek(int64(binary.BigEndian.Uint16(header))-2, io.SeekCurrent); err != nil {
-		return nil, err
+	frameHeader := buf.Next(28)
+	rtmd.Timecode = &Timecode{
+		Hour:  int(frameHeader[13]),
+		Min:   int(frameHeader[14]),
+		Sec:   int(frameHeader[15]),
+		Frame: int(binary.BigEndian.Uint16(frameHeader[16:18])),
 	}
-	buf := bytes.NewBuffer(make([]byte, 0, 2))
 	infos := make([]*MetadataSetInfo, 0, 4)
 	for {
-		buf.Reset()
-		if _, err := io.CopyN(buf, r, 2); err != nil {
+		if _, err := io.CopyN(buf, r, 20); err != nil {
 			return nil, err
 		}
 		info := &MetadataSetInfo{}
-		infos = append(infos, info)
-		name := buf.Bytes()
-		if name[0] == 0x06 && name[1] == 0x0E {
-			more := bytes.NewBuffer(make([]byte, 0, 18))
-			if _, err := io.CopyN(more, r, 18); err != nil {
-				return nil, err
-			}
-			all := append(buf.Bytes(), more.Bytes()...)
+		header := buf.Next(20)
+		if header[0] == 0x06 && header[1] == 0x0E && header[2] == 0x2B && header[3] == 0x34 {
 			info.bodyOffset, _ = r.Seek(0, io.SeekCurrent)
-			info.bodyLength = binary.BigEndian.Uint16(all[18:])
-			switch hex.EncodeToString(all[:16]) {
+			info.bodyLength = binary.BigEndian.Uint16(header[18:])
+			switch hex.EncodeToString(header[:16]) {
 			case string(LensUnitMetadataHex):
 				info.name = string(lensUnitMetadataSet)
 			case string(CameraUnitMetadataHex):
@@ -171,17 +183,9 @@ func readRTMDLayout(r io.ReadSeeker) ([]*MetadataSetInfo, error) {
 			case string(UserDefinedAcquisitionMetadataHex):
 				info.name = string(userDefinedAcquisitionMetadataSet)
 			}
+			infos = append(infos, info)
 		} else {
-			info.name = string(undefined)
-			sizeBytes := make([]byte, 2)
-			if _, err := r.Read(sizeBytes); err != nil {
-				return nil, err
-			}
-			info.bodyLength = binary.BigEndian.Uint16(sizeBytes)
-			info.bodyOffset, _ = r.Seek(0, io.SeekCurrent)
-			if name[0] == 0xFF && name[1] == 0xFF {
-				break
-			}
+			break
 		}
 		if _, err := r.Seek(int64(info.bodyLength), io.SeekCurrent); err != nil {
 			return nil, err
