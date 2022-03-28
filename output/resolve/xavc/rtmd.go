@@ -105,22 +105,32 @@ func ReadMdat(r io.ReadSeeker) (*box.Info, error) {
 	}
 }
 
-func getHeaderAndBlockSize(r io.ReadSeeker, mdatBox *box.Info) ([]byte, int64, error) {
+func getHeaderAndBlockSize(r io.ReadSeeker, mdatBox *box.Info) (int, []byte, int64, error) {
 	_, err := r.Seek(int64(mdatBox.Offset+mdatBox.HeaderSize), io.SeekStart)
 	if err != nil {
-		return nil, 0, err
+		return 0, nil, 0, err
 	}
 	buf := bytes.NewBuffer([]byte{})
+	if _, err := io.CopyN(buf, r, 1024); err != nil {
+		return 0, nil, 0, err
+	}
+	n := bytes.Index(buf.Next(1024), []byte{0x00, 0x1c, 0x01, 0x00})
+	if n > 0 {
+		_, err := r.Seek(int64(n-1024), io.SeekCurrent)
+		_ = err
+	} else {
+		return 0, nil, 0, errors.New("not found 001c0100")
+	}
 	if _, err := io.CopyN(buf, r, int64(1024*12)); err != nil {
-		return nil, 0, err
+		return 0, nil, 0, err
 	}
 	header := buf.Bytes()[:8]
 	block := buf.Bytes()[28:]
 	index := bytes.Index(block, header)
 	if index > 0 {
-		return header, int64(index + 28), nil
+		return n, header, int64(index + 28), nil
 	} else {
-		return header, 0, errors.New("not a valid value")
+		return 0, header, 0, errors.New("not a valid value")
 	}
 }
 

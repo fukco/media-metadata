@@ -49,7 +49,7 @@ func TestGetBlockSize(t *testing.T) {
 		return
 	} else {
 		mdat, _ := ReadMdat(f)
-		header, blockSize, _ := getHeaderAndBlockSize(f, mdat)
+		_, header, blockSize, _ := getHeaderAndBlockSize(f, mdat)
 		print(header, blockSize)
 	}
 }

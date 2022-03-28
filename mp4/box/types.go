@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/fukco/media-meta-parser/common"
 	"github.com/fukco/media-meta-parser/exif"
@@ -86,6 +87,18 @@ func (b Mdat) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media
 		return err
 	}
 	if ctx.MajorBrand == string(media.SONYXAVC) {
+		buf := bytes.NewBuffer([]byte{})
+		if _, err := io.CopyN(buf, r, 1024); err != nil {
+			return err
+		}
+		n := bytes.Index(buf.Bytes(), []byte{0x00, 0x1c, 0x01, 0x00})
+		if n > 0 {
+			_, err := r.Seek(int64(n-1024), io.SeekCurrent)
+			_ = err
+		} else {
+			return errors.New("not found 001c0100")
+		}
+
 		if data, err := rtmd.ReadRTMD(r); err != nil {
 			return err
 		} else {

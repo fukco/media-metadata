@@ -228,11 +228,11 @@ func RtmdCollectionAppend(collection *RtmdCollection, index int, rtmd *rtmd.RTMD
 
 func ReadRtmdSlice(f *os.File, start int, count int, offset int64) (*RtmdCollection, error) {
 	mdat, _ := ReadMdat(f)
-	header, blockSize, _ := getHeaderAndBlockSize(f, mdat)
+	firstFrameOffset, header, blockSize, _ := getHeaderAndBlockSize(f, mdat)
 	rtmdCollection := &RtmdCollection{}
 	if offset < 1 {
 		//jump to the offset
-		offset = int64(mdat.Offset + mdat.HeaderSize)
+		offset = int64(mdat.Offset+mdat.HeaderSize) + int64(firstFrameOffset)
 		if _, err := f.Seek(offset, io.SeekStart); err != nil {
 			return nil, err
 		}
