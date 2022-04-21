@@ -71,16 +71,21 @@ func drMetadataFromSonyXML(xml *nrtmd.NonRealTimeMeta, drMetadata *DRMetadata) e
 
 func drMetadataFromSonyRTMD(rtmd *rtmd.RTMD, drMetadata *DRMetadata) error {
 	drMetadata.Shutter = rtmd.CameraUnitMetadata.ShutterSpeedTime.String()
-	drMetadata.ISO = strconv.Itoa(int(rtmd.CameraUnitMetadata.ISOSensitivity))
-	drMetadata.CameraAperture = fmt.Sprintf("%.1f", rtmd.LensUnitMetadata.IrisFNumber)
+	if rtmd.CameraUnitMetadata.ISOSensitivity > 0 {
+		drMetadata.ISO = strconv.Itoa(int(rtmd.CameraUnitMetadata.ISOSensitivity))
+	}
+	if rtmd.LensUnitMetadata.IrisFNumber > 0 {
+		drMetadata.CameraAperture = fmt.Sprintf("%.1f", rtmd.LensUnitMetadata.IrisFNumber)
+	}
 	if rtmd.LensUnitMetadata.LensZoomPtr != nil {
 		drMetadata.FocalPoint = fmt.Sprintf("%.0f", *rtmd.LensUnitMetadata.LensZoomPtr*1000)
 	}
-	drMetadata.SensorAreaCaptured = fmt.Sprintf("%dμm * %dμm", rtmd.CameraUnitMetadata.ImagerDimensionWidth, rtmd.CameraUnitMetadata.ImagerDimensionHeight)
-	if rtmd.LensUnitMetadata.FocusRingPosition == 0xffff {
-		drMetadata.Distance = "infinity"
-	} else {
+	if rtmd.CameraUnitMetadata.ImagerDimensionWidth != 0 && rtmd.CameraUnitMetadata.ImagerDimensionHeight != 0 {
+		drMetadata.SensorAreaCaptured = fmt.Sprintf("%dμm * %dμm", rtmd.CameraUnitMetadata.ImagerDimensionWidth, rtmd.CameraUnitMetadata.ImagerDimensionHeight)
+	}
+	if rtmd.LensUnitMetadata.FocusPositionFromImagePlane > 0 {
 		drMetadata.Distance = fmt.Sprintf("%.2f m", rtmd.LensUnitMetadata.FocusPositionFromImagePlane)
+
 	}
 	return nil
 }

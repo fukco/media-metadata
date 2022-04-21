@@ -52,9 +52,7 @@ func rtmd2rtmdDisp(rtmd *rtmd.RTMD) *RtmdDisp {
 	if rtmd.LensUnitMetadata.LensZoom35mmPtr != nil {
 		rtmdDisp.FocalLength35mm = fmt.Sprintf("%.0fmm", *rtmd.LensUnitMetadata.LensZoom35mmPtr*1000)
 	}
-	if rtmd.LensUnitMetadata.FocusRingPosition == 0xffff {
-		rtmdDisp.FocusPosition = "+∞"
-	} else {
+	if rtmd.LensUnitMetadata.FocusPositionFromImagePlane > 0 {
 		rtmdDisp.FocusPosition = fmt.Sprintf("%.2fm", rtmd.LensUnitMetadata.FocusPositionFromImagePlane)
 	}
 	rtmdDisp.CaptureGammaEquation = fmt.Sprintf("%s/%s", rtmd.CameraUnitMetadata.ColorPrimaries, rtmd.CameraUnitMetadata.CaptureGammaEquation)

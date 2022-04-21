@@ -173,9 +173,7 @@ func RtmdCollectionAppend(collection *RtmdCollection, index int, rtmd *rtmd.RTMD
 		}
 	}
 	var focusPosition string
-	if rtmd.LensUnitMetadata.FocusRingPosition == 0xffff {
-		focusPosition = "+∞"
-	} else {
+	if rtmd.LensUnitMetadata.FocusPositionFromImagePlane > 0 {
 		focusPosition = fmt.Sprintf("%.2fm", rtmd.LensUnitMetadata.FocusPositionFromImagePlane)
 	}
 	if len(collection.FocusPositionSlice) < 1 {
