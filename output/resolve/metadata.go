@@ -123,8 +123,10 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 		drMetadata.CameraAperture = values[0x829d]
 		if value, ok := values[0x8831]; ok {
 			drMetadata.ISO = value
-		} else if values[0x8830] == "Standard Output Sensitivity" {
-			drMetadata.ISO = values[0x8827]
+		} else if value, ok := values[0x8827]; ok {
+			drMetadata.ISO = value
+		} else if value, ok := values[0x8832]; ok {
+			drMetadata.ISO = value
 		}
 		drMetadata.FocalPoint = values[0x920a]
 		drMetadata.CameraSerial = values[0xa431]
@@ -181,9 +183,6 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 			values[tag.ID] = tag.Value
 		}
 		drMetadata.NDFilter = values[28]
-		autoISO, _ := strconv.ParseInt(values[1], 10, 64)
-		baseISO, _ := strconv.ParseInt(values[2], 10, 64)
-		drMetadata.ISO = fmt.Sprintf("%d", baseISO/autoISO*100)
 	}
 	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.GroupCanonProcessingInfo)]; ok {
 		for i := range makerSubTags {
