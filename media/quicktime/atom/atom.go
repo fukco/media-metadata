@@ -1,27 +1,16 @@
 package atom
 
 import (
-	"fmt"
 	"github.com/fukco/media-meta-parser/media"
 	"io"
 	"os"
 	"reflect"
 )
 
-// Type is mpeg box type
-type Type [4]byte
+var Map = make(map[media.BoxType]interface{}, 64)
 
-var Map = make(map[Type]interface{}, 64)
-
-func appendAtomMap(atomType Type, i interface{}) {
+func appendAtomMap(atomType media.BoxType, i interface{}) {
 	Map[atomType] = i
-}
-
-func strToType(code string) Type {
-	if len(code) != 4 {
-		panic(fmt.Errorf("invalid box type id length: [%s]", code))
-	}
-	return Type{code[0], code[1], code[2], code[3]}
 }
 
 type IAtom interface {

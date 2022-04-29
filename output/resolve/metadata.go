@@ -3,38 +3,40 @@ package resolve
 import (
 	"fmt"
 	"github.com/fukco/media-meta-parser/exif"
+	"github.com/fukco/media-meta-parser/manufacturer/nikon"
 	"github.com/fukco/media-meta-parser/manufacturer/panasonic"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/nrtmd"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
 	"github.com/fukco/media-meta-parser/media"
+	"github.com/fukco/media-meta-parser/media/mp4/box"
 	"github.com/fukco/media-meta-parser/metadata"
-	"github.com/fukco/media-meta-parser/mp4/box"
 	"strconv"
+	"strings"
 )
 
 type DRMetadata struct {
 	FileName      string `csv:"File Name"`
 	ClipDirectory string `csv:"Clip Directory"`
 
-	CameraType         string `csv:"Camera Type"`
+	CameraType         string `csv:"Camera BoxType"`
 	CameraManufacturer string `csv:"Camera Manufacturer"`
 	CameraSerial       string `csv:"Camera Serial #"`
 	CameraId           string `csv:"Camera ID"`
 	CameraNotes        string `csv:"Camera Notes"`
 	CameraFormat       string `csv:"Camera Format"`
-	MediaType          string `csv:"Media Type"`
+	MediaType          string `csv:"Media BoxType"`
 	TimeLapseInterval  string `csv:"Time-lapse Interval"`
 	CameraFps          string `csv:"Camera FPS"`
-	ShutterType        string `csv:"Shutter Type"`
+	ShutterType        string `csv:"Shutter BoxType"`
 	Shutter            string `csv:"Shutter"`
 	ISO                string `csv:"ISO"`
 	WhitePoint         string `csv:"White Point (Kelvin)"`
 	WhiteBalanceTint   string `csv:"White Balance Tint"`
 	CameraFirmware     string `csv:"Camera Firmware"`
-	LensType           string `csv:"Lens Type"`
+	LensType           string `csv:"Lens BoxType"`
 	LensNumber         string `csv:"Lens Number"`
 	LensNotes          string `csv:"Lens Notes"`
-	CameraApertureType string `csv:"Camera Aperture Type"`
+	CameraApertureType string `csv:"Camera Aperture BoxType"`
 	CameraAperture     string `csv:"Camera Aperture"`
 	FocalPoint         string `csv:"Focal Point (mm)"`
 	Distance           string `csv:"Distance"`
@@ -233,6 +235,34 @@ func drMetadataFromUuidProfile(profile *box.Profile, drMetadata *DRMetadata) err
 	return nil
 }
 
+func drMetadataFromNctg(nctg *nikon.NCTG, drMetadata *DRMetadata) error {
+	drMetadata.CameraType = nctg.Model
+	drMetadata.CameraManufacturer = nctg.Make
+	drMetadata.CameraSerial = nctg.SerialNumber
+	drMetadata.CameraFps = fmt.Sprintf("%.2f", float32(nctg.FrameRate.Numerator)/float32(nctg.FrameRate.Denominator))
+	drMetadata.Shutter = nctg.ExposureTime.ShutterFormat()
+	if nctg.ISOInfo.ISOExpansion == "Off" {
+		drMetadata.ISO = nctg.ISOInfo.ISO
+	} else {
+		drMetadata.ISO = fmt.Sprintf("%s %s", nctg.ISOInfo.ISOExpansion, nctg.ISOInfo.ISO)
+	}
+	if _, err := strconv.Atoi(strings.TrimRight(nctg.WhiteBalance, "K")); err == nil {
+		drMetadata.WhitePoint = nctg.WhiteBalance
+	}
+	drMetadata.CameraFirmware = nctg.Software
+	drMetadata.LensType = nctg.LensModel
+	drMetadata.LensNotes = nctg.LensInfo
+	drMetadata.LensNumber = nctg.LensSerialNumber
+	drMetadata.CameraAperture = nctg.FNumber.FNumberFormat()
+	drMetadata.FocalPoint = nctg.FocalLength.FocalLengthFormat()
+	//drMetadata.Distance =
+	//drMetadata.AspectRatioNotes = nctg.CropHiSpeed
+	if nctg.PictureControlData.PictureControlBase == "N-LOG" {
+		drMetadata.GammaNotes = nctg.PictureControlData.PictureControlBase
+	}
+	return nil
+}
+
 func DRMetadataFromMeta(meta *media.Meta, csv *DRMetadata) error {
 	for i := range meta.Items {
 		item := meta.Items[i]
@@ -259,6 +289,10 @@ func DRMetadataFromMeta(meta *media.Meta, csv *DRMetadata) error {
 			}
 		case *box.Profile:
 			if err := drMetadataFromUuidProfile(item.(*box.Profile), csv); err != nil {
+				return err
+			}
+		case *nikon.NCTG:
+			if err := drMetadataFromNctg(item.(*nikon.NCTG), csv); err != nil {
 				return err
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"github.com/fukco/media-meta-parser/common"
 	"io"
 )
 
@@ -40,9 +41,9 @@ type CameraUnitMetadata struct {
 	AutoFocusSensingAreaSetting     string
 	ImagerDimensionWidth            uint16
 	ImagerDimensionHeight           uint16
-	CaptureFrameRate                *Fraction
+	CaptureFrameRate                *common.Fraction
 	ShutterSpeedAngle               float64
-	ShutterSpeedTime                *Fraction
+	ShutterSpeedTime                *common.Fraction
 	CameraMasterGainAdjustment      float64
 	ISOSensitivity                  uint16
 	ElectricalExtenderMagnification float64
@@ -71,17 +72,6 @@ func (t Timecode) String() string {
 type UserDefinedAcquisitionMetadata struct {
 	ID          []byte
 	unKnownTags []*tag
-}
-
-type Fraction struct {
-	// The numerator in the fraction, e.g. 2 in 2/3.
-	Numerator int32
-	// The value by which the numerator is divided, e.g. 3 in 2/3.
-	Denominator int32
-}
-
-func (receiver Fraction) String() string {
-	return fmt.Sprintf("%d/%d", receiver.Numerator, receiver.Denominator)
 }
 
 type MetadataSetInfo struct {
@@ -172,7 +162,7 @@ func readRTMDLayout(r io.ReadSeeker, rtmd *RTMD) ([]*MetadataSetInfo, error) {
 		}
 		info := &MetadataSetInfo{}
 		header := buf.Next(20)
-		if header[0] == 0x06 && header[1] == 0x0E && header[2] == 0x2B && header[3] == 0x34 {
+		if bytes.Compare(header[:4], []byte{0x06, 0x0E, 0x2B, 0x34}) == 0 {
 			info.bodyOffset, _ = r.Seek(0, io.SeekCurrent)
 			info.bodyLength = binary.BigEndian.Uint16(header[18:])
 			switch hex.EncodeToString(header[:16]) {

@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
-	"github.com/fukco/media-meta-parser/mp4/box"
+	"github.com/fukco/media-meta-parser/media"
+	"github.com/fukco/media-meta-parser/media/mp4/box"
 	"io"
 )
 
@@ -89,7 +90,7 @@ func ReadMdat(r io.ReadSeeker) (*box.Info, error) {
 				Offset:     offset,
 				Size:       size,
 				HeaderSize: uint64(headerSize),
-				Type:       box.StrToType("mdat"),
+				Type:       media.StrToType("mdat"),
 			}
 			return boxInfo, nil
 		} else {

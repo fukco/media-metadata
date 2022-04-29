@@ -35,10 +35,10 @@ func readIFD(data []byte, offset uint32, directoryType DirectoryType, exif *Base
 			Count: count,
 			Order: order,
 		}
-		if typeSize[dataType]*count > 4 {
+		if TypeSize[dataType]*count > 4 {
 			valueOffset := order.Uint32(valueOrOffsetBytes)
 			entry.ValOrOffset = valueOffset
-			entry.Val = data[valueOffset : valueOffset+typeSize[dataType]*count]
+			entry.Val = data[valueOffset : valueOffset+TypeSize[dataType]*count]
 		} else {
 			entry.Val = valueOrOffsetBytes
 		}
@@ -100,10 +100,10 @@ func readMakerNotes(data []byte, offset uint32, exif *Base, maker Maker) error {
 			Count: count,
 			Order: order,
 		}
-		if typeSize[dataType]*count > 4 {
+		if TypeSize[dataType]*count > 4 {
 			valueOffset := order.Uint32(valueOrOffsetBytes)
 			entry.ValOrOffset = valueOffset
-			entry.Val = data[valueOffset : valueOffset+typeSize[dataType]*count]
+			entry.Val = data[valueOffset : valueOffset+TypeSize[dataType]*count]
 		} else {
 			entry.Val = valueOrOffsetBytes
 		}

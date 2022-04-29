@@ -2,6 +2,7 @@ package rtmd
 
 import (
 	"encoding/binary"
+	"github.com/fukco/media-meta-parser/common"
 	"math"
 )
 
@@ -169,7 +170,7 @@ func processImagerDimensionHeight(tag *tag, rtmd *RTMD) error {
 }
 
 func processCaptureFrameRate(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.CaptureFrameRate = &Fraction{
+	rtmd.CameraUnitMetadata.CaptureFrameRate = &common.Fraction{
 		Numerator:   int32(binary.BigEndian.Uint32(tag.data[:4])),
 		Denominator: int32(binary.BigEndian.Uint32(tag.data[4:])),
 	}
@@ -182,7 +183,7 @@ func processShutterSpeedAngel(tag *tag, rtmd *RTMD) error {
 }
 
 func processShutterSpeedTime(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.ShutterSpeedTime = &Fraction{
+	rtmd.CameraUnitMetadata.ShutterSpeedTime = &common.Fraction{
 		Numerator:   int32(binary.BigEndian.Uint32(tag.data[:4])),
 		Denominator: int32(binary.BigEndian.Uint32(tag.data[4:])),
 	}

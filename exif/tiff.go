@@ -76,8 +76,8 @@ var typeNames = map[DataType]string{
 	DTDouble:    "double",
 }
 
-// typeSize specifies the size in bytes of each type.
-var typeSize = map[DataType]uint32{
+// TypeSize specifies the size in bytes of each type.
+var TypeSize = map[DataType]uint32{
 	DTByte:      1,
 	DTAscii:     1,
 	DTShort:     2,

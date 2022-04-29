@@ -4,15 +4,17 @@ import (
 	"encoding/binary"
 	"github.com/fukco/media-meta-parser/manufacturer"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/mp4"
-	"github.com/fukco/media-meta-parser/quicktime"
+	"github.com/fukco/media-meta-parser/media/mp4"
+	"github.com/fukco/media-meta-parser/media/quicktime"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
 func IsSupportExtension(file *os.File) bool {
-	if strings.EqualFold(filepath.Ext(file.Name()), string(media.Mp4Extension)) || strings.EqualFold(filepath.Ext(file.Name()), string(media.MovExtension)) {
+	if strings.EqualFold(filepath.Ext(file.Name()), string(media.Mp4Extension)) ||
+		strings.EqualFold(filepath.Ext(file.Name()), string(media.MovExtension)) ||
+		strings.EqualFold(filepath.Ext(file.Name()), string(media.NRAWExtension)) {
 		return true
 	}
 	return false
@@ -39,7 +41,8 @@ func IsSupportMediaFile(file *os.File) (bool, *media.Context, error) {
 		return false, nil, err
 	}
 	majorBrand := body[:4]
-	if string(majorBrand) == string(media.MP42) || string(majorBrand) == string(media.SONYXAVC) || string(majorBrand) == string(media.QT) {
+	if string(majorBrand) == string(media.MP42) || string(majorBrand) == string(media.SONYXAVC) ||
+		string(majorBrand) == string(media.QT) || string(majorBrand) == string(media.NIKO) {
 		ctx.MajorBrand = string(majorBrand)
 		ctx.CompatibleBrands = make([]string, 0, 4)
 		compatibleBytes := body[8:]
@@ -51,12 +54,19 @@ func IsSupportMediaFile(file *os.File) (bool, *media.Context, error) {
 			for i := range ctx.CompatibleBrands {
 				if ctx.CompatibleBrands[i] == "pana" {
 					ctx.Manufacturer = manufacturer.PANASONIC
+				} else if ctx.CompatibleBrands[i] == "niko" {
+					ctx.Manufacturer = manufacturer.NIKON
 				}
 			}
+		} else if ctx.MajorBrand == string(media.NIKO) {
+			ctx.MediaType = media.MOV
+			ctx.Manufacturer = manufacturer.NIKON
 		} else {
 			ctx.MediaType = media.MP4
 			if ctx.MajorBrand == string(media.SONYXAVC) {
 				ctx.Manufacturer = manufacturer.SONY
+			} else if ctx.MajorBrand == string(media.NIKO) {
+				ctx.Manufacturer = manufacturer.NIKON
 			}
 		}
 		return true, ctx, nil

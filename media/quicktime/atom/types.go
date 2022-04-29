@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/fukco/media-meta-parser/exif"
 	"github.com/fukco/media-meta-parser/manufacturer"
+	"github.com/fukco/media-meta-parser/manufacturer/nikon"
 	"github.com/fukco/media-meta-parser/manufacturer/panasonic"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
 	"github.com/fukco/media-meta-parser/media"
@@ -15,7 +16,7 @@ import (
 )
 
 /************************** moov **************************/
-func TypeMoov() Type { return strToType("moov") }
+func TypeMoov() media.BoxType { return media.StrToType("moov") }
 
 type Moov struct {
 	ContainerAtom
@@ -27,7 +28,7 @@ func init() {
 }
 
 /************************** meta **************************/
-func TypeMeta() Type { return strToType("meta") }
+func TypeMeta() media.BoxType { return media.StrToType("meta") }
 
 type Meta struct {
 	ContainerAtom
@@ -38,7 +39,7 @@ func init() {
 }
 
 /************************** keys **************************/
-func TypeKeys() Type { return strToType("keys") }
+func TypeKeys() media.BoxType { return media.StrToType("keys") }
 
 type KeyEntry struct {
 	Size      uint32
@@ -89,7 +90,7 @@ func (a Keys) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 }
 
 /************************** ilst **************************/
-func TypeIlst() Type { return strToType("ilst") }
+func TypeIlst() media.BoxType { return media.StrToType("ilst") }
 
 type Ilst struct {
 	FullAtom
@@ -150,7 +151,7 @@ func (a Ilst) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 }
 
 /************************** udta **************************/
-func TypeUdta() Type { return strToType("udta") }
+func TypeUdta() media.BoxType { return media.StrToType("udta") }
 
 type Udta struct {
 	ContainerAtom
@@ -161,7 +162,7 @@ func init() {
 }
 
 /************************** PANA **************************/
-func TypePANA() Type { return strToType("PANA") }
+func TypePANA() media.BoxType { return media.StrToType("PANA") }
 
 type PANA struct {
 }
@@ -193,7 +194,7 @@ func (a PANA) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 }
 
 /************************** MVTG **************************/
-func TypeMVTG() Type { return strToType("MVTG") }
+func TypeMVTG() media.BoxType { return media.StrToType("MVTG") }
 
 type MVTG struct {
 }
@@ -213,6 +214,49 @@ func (a MVTG) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 	}
 	if err := exif.Process(data, true, meta); err != nil {
 		return err
+	}
+	return nil
+}
+
+/************************** NCDT **************************/
+func TypeNCDT() media.BoxType { return media.StrToType("NCDT") }
+
+type NCDT struct {
+}
+
+func init() {
+	appendAtomMap(TypeNCDT(), NCDT{})
+}
+
+func (a NCDT) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media.Meta) error {
+	buf := bytes.NewBuffer([]byte{})
+	current, err := ai.SeekToPayload(r)
+	if err != nil {
+		return err
+	}
+	for {
+		if current >= int64(ai.Offset+ai.Size) {
+			break
+		}
+		if _, err := io.CopyN(buf, r, 8); err == nil {
+			data := buf.Next(8)
+			size := binary.BigEndian.Uint32(data[:4])
+			if bytes.Compare(data[4:], []byte("NCTG")) == 0 {
+				content := make([]byte, size)
+				_, err := r.Read(content)
+				if err != nil {
+					return err
+				}
+				return nikon.ProcessNCTG(meta, content, ctx)
+			} else {
+				if _, err := r.Seek(int64(size-8), io.SeekCurrent); err != nil {
+					return err
+				}
+			}
+			current += int64(size)
+		} else {
+			return err
+		}
 	}
 	return nil
 }

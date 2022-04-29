@@ -3,7 +3,7 @@ package quicktime
 import (
 	"fmt"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/quicktime/atom"
+	"github.com/fukco/media-meta-parser/media/quicktime/atom"
 	"os"
 	"path/filepath"
 	"reflect"

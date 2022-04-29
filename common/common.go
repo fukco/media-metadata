@@ -14,3 +14,7 @@ func ConvertBitrate(input uint32) string {
 	}
 	return fmt.Sprintf("%d%s", input, units[i])
 }
+
+func FormatFNumber(value string) string {
+	return ""
+}

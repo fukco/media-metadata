@@ -13,9 +13,11 @@ const (
 	MP42     SupportMajorBrand = "mp42"
 	SONYXAVC SupportMajorBrand = "XAVC"
 	QT       SupportMajorBrand = "qt  "
+	NIKO     SupportMajorBrand = "niko"
 )
 
 const (
-	Mp4Extension Extension = ".MP4"
-	MovExtension Extension = ".MOV"
+	Mp4Extension  Extension = ".MP4"
+	MovExtension  Extension = ".MOV"
+	NRAWExtension Extension = ".NEV"
 )

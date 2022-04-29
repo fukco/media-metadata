@@ -1,48 +1,19 @@
 package box
 
 import (
-	"fmt"
 	"github.com/fukco/media-meta-parser/media"
 	"io"
 	"os"
 	"reflect"
-	"strings"
 )
 
 type IBox interface {
 	GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media.Meta) error
 }
 
-// Type is mpeg box type
-type Type [4]byte
+var Map = make(map[media.BoxType]interface{}, 64)
 
-func StrToType(code string) Type {
-	if len(code) != 4 {
-		panic(fmt.Errorf("invalid box type id length: [%s]", code))
-	}
-	return Type{code[0], code[1], code[2], code[3]}
-}
-
-func (boxType Type) String() string {
-	if isPrintable(boxType[0]) && isPrintable(boxType[1]) && isPrintable(boxType[2]) && isPrintable(boxType[3]) {
-		s := string(boxType[:])
-		s = strings.ReplaceAll(s, string([]byte{0xa9}), "(c)")
-		return s
-	}
-	return fmt.Sprintf("0x%02x%02x%02x%02x", boxType[0], boxType[1], boxType[2], boxType[3])
-}
-
-func isASCIIPrintableCharacter(c byte) bool {
-	return c >= 0x20 && c <= 0x7e
-}
-
-func isPrintable(c byte) bool {
-	return isASCIIPrintableCharacter(c) || c == 0xa9
-}
-
-var Map = make(map[Type]interface{}, 64)
-
-func AppendBoxMap(boxType Type, i interface{}) {
+func AppendBoxMap(boxType media.BoxType, i interface{}) {
 	Map[boxType] = i
 }
 

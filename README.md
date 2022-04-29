@@ -7,6 +7,7 @@
 * Atomos
 * Canon 
 * Fujifilm
+* Nikon
 * Panasonic
 * SONY XAVC文件
 * 待补充

@@ -5,7 +5,7 @@ import (
 	"github.com/fukco/media-meta-parser/manufacturer/sony/nrtmd"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/mp4/box"
+	"github.com/fukco/media-meta-parser/media/mp4/box"
 	"strings"
 	"time"
 )

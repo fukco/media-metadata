@@ -3,7 +3,7 @@ package mp4
 import (
 	"fmt"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/mp4/box"
+	"github.com/fukco/media-meta-parser/media/mp4/box"
 	"os"
 	"path/filepath"
 	"reflect"
