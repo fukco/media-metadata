@@ -72,7 +72,9 @@ func drMetadataFromSonyXML(xml *nrtmd.NonRealTimeMeta, drMetadata *DRMetadata) e
 }
 
 func drMetadataFromSonyRTMD(rtmd *rtmd.RTMD, drMetadata *DRMetadata) error {
-	drMetadata.Shutter = rtmd.CameraUnitMetadata.ShutterSpeedTime.String()
+	if rtmd.CameraUnitMetadata.ShutterSpeedTime != nil {
+		drMetadata.Shutter = rtmd.CameraUnitMetadata.ShutterSpeedTime.String()
+	}
 	if rtmd.CameraUnitMetadata.ISOSensitivity > 0 {
 		drMetadata.ISO = strconv.Itoa(int(rtmd.CameraUnitMetadata.ISOSensitivity))
 	}
@@ -295,6 +297,8 @@ func DRMetadataFromMeta(meta *media.Meta, csv *DRMetadata) error {
 			if err := drMetadataFromNctg(item.(*nikon.NCTG), csv); err != nil {
 				return err
 			}
+		default:
+			continue
 		}
 	}
 	return nil
