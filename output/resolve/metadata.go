@@ -76,7 +76,11 @@ func drMetadataFromSonyRTMD(rtmd *rtmd.RTMD, drMetadata *DRMetadata) error {
 		drMetadata.Shutter = rtmd.CameraUnitMetadata.ShutterSpeedTime.String()
 	}
 	if rtmd.CameraUnitMetadata.ISOSensitivity > 0 {
-		drMetadata.ISO = strconv.Itoa(int(rtmd.CameraUnitMetadata.ISOSensitivity))
+		if rtmd.CameraUnitMetadata.ISOSensitivity == rtmd.CameraUnitMetadata.ExposureIndexOfPhotoMeter {
+			drMetadata.ISO = strconv.Itoa(int(rtmd.CameraUnitMetadata.ISOSensitivity))
+		} else {
+			drMetadata.ISO = fmt.Sprintf("%d EI:%d", rtmd.CameraUnitMetadata.ISOSensitivity, rtmd.CameraUnitMetadata.ExposureIndexOfPhotoMeter)
+		}
 	}
 	if rtmd.LensUnitMetadata.IrisFNumber > 0 {
 		drMetadata.CameraAperture = fmt.Sprintf("%.1f", rtmd.LensUnitMetadata.IrisFNumber)

@@ -17,13 +17,17 @@ var exifTagDefinitionMap = map[uint16]*TagDefinition{
 		data := v.([]int64)
 		if data[0]*3 > data[1] {
 			return fmt.Sprintf("%.1f″", float64(data[0])/float64(data[1]))
+		} else if data[0] == 0 || data[1] == 0 {
+			return "undef"
 		} else {
 			return fmt.Sprintf("1/%d", data[1]/data[0])
 		}
 	}},
 	0x829d: {Name: "F number", Fn: func(v interface{}) string {
 		data := v.([]int64)
-		if data[0] < data[1] {
+		if data[0] == 0 || data[1] == 0 {
+			return "undef"
+		} else if data[0] < data[1] {
 			return fmt.Sprintf("F/%.2f", float64(data[0])/float64(data[1]))
 		} else {
 			return fmt.Sprintf("F/%.1f", float64(data[0])/float64(data[1]))
