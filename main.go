@@ -88,49 +88,18 @@ struct DRSonyRtmdDisp
 import "C"
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/fukco/media-meta-parser/media"
+	_ "github.com/fukco/media-meta-parser/media/quicktime"
 	"github.com/fukco/media-meta-parser/output/resolve"
 	"github.com/fukco/media-meta-parser/output/resolve/xavc"
-	"golang.org/x/text/encoding/unicode"
 	"os"
-	"path/filepath"
-	"reflect"
-	"time"
 )
 
-// getMediaFiles is a func return media files
-func getMediaFiles(p string, recursive bool) ([]*os.File, error) {
-	fi, err := os.Stat(p)
-	if err != nil {
-		return nil, err
-	}
-	if !fi.IsDir() {
-		return nil, errors.New("input is not a folder path")
-	}
-	mediaFiles := make([]*os.File, 0, 64)
-	if err := filepath.WalkDir(p, func(path string, entry os.DirEntry, err error) error {
-		if !recursive && p != path {
-			if entry.IsDir() {
-				return filepath.SkipDir
-			}
-		}
-		mediaFile, _ := os.Open(path)
-		if IsSupportExtension(mediaFile) {
-			mediaFiles = append(mediaFiles, mediaFile)
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return mediaFiles, nil
-}
-
-func getMediaFile(p string) (*os.File, error) {
+func getMediaFile(p string) (*media.Media, error) {
 	if fileInfo, err := os.Stat(p); err != nil {
 		return nil, err
 	} else {
@@ -139,116 +108,36 @@ func getMediaFile(p string) (*os.File, error) {
 		}
 	}
 	mediaFile, err := os.Open(p)
-	if err != nil || !IsSupportExtension(mediaFile) {
+	if err != nil {
 		return nil, err
 	}
-	return mediaFile, nil
+	m := media.NewMedia(mediaFile)
+	if m == nil {
+		return nil, errors.New("not support media file")
+	}
+
+	return m, nil
 }
 
-func getMediaMeta(mediaFiles []*os.File) []*media.Meta {
-	if len(mediaFiles) <= 0 {
-		return nil
-	}
-	slice := make([]*media.Meta, 0, len(mediaFiles))
-	for i := range mediaFiles {
-		mediaFile := mediaFiles[i]
-		var meta *media.Meta
-		is, ctx, err := IsSupportMediaFile(mediaFile)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		} else if !is {
-			continue
-		}
-		meta = ExtractMeta(mediaFile, ctx)
-		if meta != nil {
-			slice = append(slice, meta)
-		}
-	}
-	return slice
-}
-
-func consoleOutput(metaSlice []*media.Meta) {
-	for i := range metaSlice {
-		meta := metaSlice[i]
-		if s, err := json.Marshal(meta); err != nil {
-			fmt.Println(err)
-		} else {
-			fmt.Println(string(s))
-		}
-	}
-}
-
-func resolveCSVOutput(metaSlice []*media.Meta, outputPath string) {
-	if len(metaSlice) <= 0 {
-		return
-	}
-	csvFile, err := os.Create(outputPath)
-	if err != nil {
+func consoleOutput(meta *media.Meta) {
+	if s, err := json.Marshal(meta); err != nil {
 		fmt.Println(err)
+	} else {
+		fmt.Println(string(s))
 	}
-	enc := unicode.UTF16(unicode.LittleEndian, unicode.UseBOM).NewEncoder()
-	writer := csv.NewWriter(enc.Writer(csvFile))
-	reflectedValue := reflect.ValueOf(&resolve.DRMetadata{})
-	header := make([]string, 0, reflectedValue.Type().Elem().NumField())
-	for i := 0; i < reflectedValue.Type().Elem().NumField(); i++ {
-		name := reflectedValue.Type().Elem().Field(i).Tag.Get("csv")
-		header = append(header, name)
-	}
-	if err := writer.Write(header); err != nil {
-		fmt.Println(err)
-	}
-	defer writer.Flush()
-
-	for i := range metaSlice {
-		meta := metaSlice[i]
-		dir, file := filepath.Split(meta.MediaPath)
-		if os.IsPathSeparator(dir[len(dir)-1]) {
-			dir = dir[:len(dir)-1]
-		}
-		drMetadata := &resolve.DRMetadata{
-			FileName:      file,
-			ClipDirectory: dir,
-		}
-		if err := resolve.DRMetadataFromMeta(meta, drMetadata); err != nil {
-			fmt.Println(err)
-		}
-		entry := make([]string, 0, reflectedValue.Type().Elem().NumField())
-		for i := 0; i < reflectedValue.Type().Elem().NumField(); i++ {
-			v := reflect.ValueOf(drMetadata).Elem().Field(i).Interface()
-			entry = append(entry, fmt.Sprint(v))
-
-		}
-		if err := writer.Write(entry); err != nil {
-			fmt.Println(err)
-		}
-	}
-	fmt.Printf("Metadata write to %s succeed!\n", outputPath)
 }
 
 func drProcessMediaFile(absPath string) *resolve.DRMetadata {
-	drMetadata := &resolve.DRMetadata{}
-	f, err := os.Open(absPath)
-	defer func() {
-		if err := f.Close(); err != nil {
-			return
-		}
-	}()
+	m, err := getMediaFile(absPath)
+	defer m.Close()
 	if err != nil {
 		return nil
 	} else {
-		var meta *media.Meta
-		is, ctx, err := IsSupportMediaFile(f)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		} else if !is {
-			return nil
-		}
-		meta = ExtractMeta(f, ctx)
+		meta := m.ExtractMeta()
 		if meta == nil {
 			return nil
 		}
+		drMetadata := &resolve.DRMetadata{}
 		if err := resolve.DRMetadataFromMeta(meta, drMetadata); err != nil {
 			fmt.Println(err)
 			return nil
@@ -302,24 +191,16 @@ func DRProcessMediaFile(absPath *C.char) C.struct_DRMetadata {
 
 func drSonyNrtmdDisp(absPath string) *xavc.NrtmdDisp {
 	nrtmdDisp := &xavc.NrtmdDisp{}
-	f, err := os.Open(absPath)
-	defer func() {
-		if err := f.Close(); err != nil {
-			return
-		}
-	}()
+	m, err := getMediaFile(absPath)
+	defer m.Close()
 	if err != nil {
 		return nil
 	} else {
 		var meta *media.Meta
-		is, ctx, err := IsSupportMediaFile(f)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		} else if !is || ctx.MajorBrand != "XAVC" {
+		if m.Ftyp.MajorBrand != "XAVC" {
 			return nil
 		}
-		meta = ExtractMeta(f, ctx)
+		meta = m.ExtractMeta()
 		if meta == nil {
 			return nil
 		}
@@ -440,74 +321,19 @@ func DrSonyRtmdDisp(absPath *C.char, start C.int, count C.int, offset C.longlong
 // -folder /path/to/folder (-r)
 func main() {
 	mediaFile := flag.String("file", "", "media file full path")
-	mediaFileFolder := flag.String("folder", "", "media file folder")
-	recursive := flag.Bool("recursive", false, "read media file folder recursively or not(effect when use -folder mode)")
-	outputPath := flag.String("o", "", "output folder")
-	outputMode := flag.String("output_mode", "console", "output mode: 'console','resolve'")
 	flag.Parse()
 
-	if *mediaFile == "" && *mediaFileFolder == "" {
-		fmt.Println("Please input file/folder path!")
+	if *mediaFile == "" {
+		fmt.Println("Please input file path!")
 		os.Exit(1)
 	}
-	var metaSlice []*media.Meta
-	if *mediaFile != "" {
-		file, err := getMediaFile(*mediaFile)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		if file != nil {
-			defer func() {
-				if err := file.Close(); err != nil {
-					return
-				}
-			}()
-			metaSlice = getMediaMeta([]*os.File{file})
-		}
-	} else {
-		files, err := getMediaFiles(*mediaFileFolder, *recursive)
-		defer func() {
-			for _, file := range files {
-				if err := file.Close(); err != nil {
-					return
-				}
-			}
-		}()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		metaSlice = getMediaMeta(files)
+	m, err := getMediaFile(*mediaFile)
+	defer m.Close()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
-
-	if *outputMode == "console" {
-		consoleOutput(metaSlice)
-	} else {
-		if *outputPath == "" {
-			if *mediaFile != "" {
-				split, _ := filepath.Split(*mediaFile)
-				*outputPath = split
-			} else {
-				*outputPath = *mediaFileFolder
-			}
-		} else {
-			if info, err := os.Stat(*outputPath); err != nil {
-				if os.IsNotExist(err) {
-					fmt.Println("Your input path is not exist!")
-				} else {
-					fmt.Println(err)
-				}
-				os.Exit(1)
-			} else if !info.IsDir() {
-				fmt.Println("Your output folder is illegal!")
-				os.Exit(1)
-			}
-		}
-		if *outputMode == "resolve" {
-			outputFile := filepath.Join(*outputPath, fmt.Sprintf("resolve-meta_%s.csv", time.Now().Format("20060102150405")))
-			resolveCSVOutput(metaSlice, outputFile)
-		}
-	}
+	meta := m.ExtractMeta()
+	consoleOutput(meta)
 	fmt.Println("Processing Successfully!")
 }

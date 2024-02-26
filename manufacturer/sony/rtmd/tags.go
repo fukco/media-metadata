@@ -87,65 +87,66 @@ var rtmdMap map[tagName]func(tag *tag, rtmd *RTMD) error
 // E303, "Lighting Preset"
 // E304, "Current record date and time"
 func init() {
-	rtmdMap = make(map[tagName]func(*tag, *RTMD) error, 32)
-	// Lens Unit Metadata
-	rtmdMap[tagName{0x80, 0x00}] = processIrisFNumber
-	rtmdMap[tagName{0x80, 0x01}] = processFocusPositionFromImagePlane
-	rtmdMap[tagName{0x80, 0x04}] = processLensZoom35mm
-	rtmdMap[tagName{0x80, 0x05}] = processLensZoom
-	rtmdMap[tagName{0x80, 0x0a}] = processFocusRingPosition
-	rtmdMap[tagName{0x80, 0x0b}] = processZoomRingPosition
-	// Camera Unit Metadata
-	rtmdMap[tagName{0x81, 0x00}] = processAutoExposureMode
-	rtmdMap[tagName{0x81, 0x01}] = processAutoFocusSensingAreaSetting
-	rtmdMap[tagName{0x81, 0x04}] = processImagerDimensionWidth
-	rtmdMap[tagName{0x81, 0x05}] = processImagerDimensionHeight
-	rtmdMap[tagName{0x81, 0x06}] = processCaptureFrameRate
-	rtmdMap[tagName{0x81, 0x08}] = processShutterSpeedAngel
-	rtmdMap[tagName{0x81, 0x09}] = processShutterSpeedTime
-	rtmdMap[tagName{0x81, 0x0a}] = processCameraMasterGainAdjustment
-	rtmdMap[tagName{0x81, 0x0b}] = processISOSensitivity
-	rtmdMap[tagName{0x81, 0x0c}] = processElectricalExtenderMagnification
-	rtmdMap[tagName{0x81, 0x0d}] = processAutoWhiteBalanceMode
-	rtmdMap[tagName{0x81, 0x15}] = processExposureIndexOfPhotoMeter
-	rtmdMap[tagName{0x32, 0x10}] = processCaptureGammaEquation
-	rtmdMap[tagName{0x32, 0x19}] = processColorPrimaries
-	rtmdMap[tagName{0x32, 0x1a}] = processCodingEquations
-	rtmdMap[tagName{0xe3, 0x03}] = processLightingPreset
-	// User Defined Acquisition Metadata
-	rtmdMap[tagName{0xe0, 0x00}] = processUDAMId
+	rtmdMap = map[tagName]func(*tag, *RTMD) error{
+		// Lens Unit Metadata
+		{0x80, 0x00}: processIrisFNumber,
+		{0x80, 0x01}: processFocusPositionFromImagePlane,
+		{0x80, 0x04}: processLensZoom35mm,
+		{0x80, 0x05}: processLensZoom,
+		{0x80, 0x0a}: processFocusRingPosition,
+		{0x80, 0x0b}: processZoomRingPosition,
+		// Camera Unit Metadata
+		{0x81, 0x00}: processAutoExposureMode,
+		{0x81, 0x01}: processAutoFocusSensingAreaSetting,
+		{0x81, 0x04}: processImagerDimensionWidth,
+		{0x81, 0x05}: processImagerDimensionHeight,
+		{0x81, 0x06}: processCaptureFrameRate,
+		{0x81, 0x08}: processShutterSpeedAngel,
+		{0x81, 0x09}: processShutterSpeedTime,
+		{0x81, 0x0a}: processCameraMasterGainAdjustment,
+		{0x81, 0x0b}: processISOSensitivity,
+		{0x81, 0x0c}: processElectricalExtenderMagnification,
+		{0x81, 0x0d}: processAutoWhiteBalanceMode,
+		{0x81, 0x15}: processExposureIndexOfPhotoMeter,
+		{0x32, 0x10}: processCaptureGammaEquation,
+		{0x32, 0x19}: processColorPrimaries,
+		{0x32, 0x1a}: processCodingEquations,
+		{0xe3, 0x03}: processLightingPreset,
+		// User Defined Acquisition Metadata
+		{0xe0, 0x00}: processUDAMId,
+	}
 }
 
 func processIrisFNumber(tag *tag, rtmd *RTMD) error {
-	data := binary.BigEndian.Uint16(tag.data)
+	data := tag.data.BigEndianUint16()
 	rtmd.LensUnitMetadata.IrisFNumber = math.Pow(2, (1-float64(data)/0x10000)*8)
 	return nil
 }
 
 func processFocusPositionFromImagePlane(tag *tag, rtmd *RTMD) error {
-	rtmd.LensUnitMetadata.FocusPositionFromImagePlane = commonDistanceFormat(tag.data)
+	rtmd.LensUnitMetadata.FocusPositionFromImagePlane = tag.data.CommonDistanceFormat()
 	return nil
 }
 
 func processLensZoom35mm(tag *tag, rtmd *RTMD) error {
-	result := commonDistanceFormat(tag.data)
+	result := tag.data.CommonDistanceFormat()
 	rtmd.LensUnitMetadata.LensZoom35mmPtr = &result
 	return nil
 }
 
 func processLensZoom(tag *tag, rtmd *RTMD) error {
-	result := commonDistanceFormat(tag.data)
+	result := tag.data.CommonDistanceFormat()
 	rtmd.LensUnitMetadata.LensZoomPtr = &result
 	return nil
 }
 
 func processFocusRingPosition(tag *tag, rtmd *RTMD) error {
-	rtmd.LensUnitMetadata.FocusRingPosition = binary.BigEndian.Uint16(tag.data)
+	rtmd.LensUnitMetadata.FocusRingPosition = tag.data.BigEndianUint16()
 	return nil
 }
 
 func processZoomRingPosition(tag *tag, rtmd *RTMD) error {
-	rtmd.LensUnitMetadata.ZoomRingPosition = binary.BigEndian.Uint16(tag.data)
+	rtmd.LensUnitMetadata.ZoomRingPosition = tag.data.BigEndianUint16()
 	return nil
 }
 
@@ -160,12 +161,12 @@ func processAutoFocusSensingAreaSetting(tag *tag, rtmd *RTMD) error {
 }
 
 func processImagerDimensionWidth(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.ImagerDimensionWidth = binary.BigEndian.Uint16(tag.data)
+	rtmd.CameraUnitMetadata.ImagerDimensionWidth = tag.data.BigEndianUint16()
 	return nil
 }
 
 func processImagerDimensionHeight(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.ImagerDimensionHeight = binary.BigEndian.Uint16(tag.data)
+	rtmd.CameraUnitMetadata.ImagerDimensionHeight = tag.data.BigEndianUint16()
 	return nil
 }
 
@@ -178,7 +179,7 @@ func processCaptureFrameRate(tag *tag, rtmd *RTMD) error {
 }
 
 func processShutterSpeedAngel(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.ShutterSpeedAngle = float64(binary.BigEndian.Uint32(tag.data)) / 60
+	rtmd.CameraUnitMetadata.ShutterSpeedAngle = float64(tag.data.BigEndianUint32()) / 60
 	return nil
 }
 
@@ -196,12 +197,12 @@ func processCameraMasterGainAdjustment(tag *tag, rtmd *RTMD) error {
 }
 
 func processISOSensitivity(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.ISOSensitivity = binary.BigEndian.Uint16(tag.data)
+	rtmd.CameraUnitMetadata.ISOSensitivity = tag.data.BigEndianUint16()
 	return nil
 }
 
 func processElectricalExtenderMagnification(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.ElectricalExtenderMagnification = float64(binary.BigEndian.Uint16(tag.data)) / 100
+	rtmd.CameraUnitMetadata.ElectricalExtenderMagnification = float64(tag.data.BigEndianUint16()) / 100
 	return nil
 }
 
@@ -211,7 +212,7 @@ func processAutoWhiteBalanceMode(tag *tag, rtmd *RTMD) error {
 }
 
 func processExposureIndexOfPhotoMeter(tag *tag, rtmd *RTMD) error {
-	rtmd.CameraUnitMetadata.ExposureIndexOfPhotoMeter = binary.BigEndian.Uint16(tag.data)
+	rtmd.CameraUnitMetadata.ExposureIndexOfPhotoMeter = tag.data.BigEndianUint16()
 	return nil
 }
 
@@ -241,11 +242,4 @@ func processUDAMId(tag *tag, rtmd *RTMD) error {
 		metadata.ID = tag.data
 	}
 	return nil
-}
-
-func commonDistanceFormat(slice []byte) float64 {
-	data := binary.BigEndian.Uint16(slice)
-	e := int8(data>>8&0xf0) >> 4
-	m := data & 0x0fff
-	return float64(m) * math.Pow10(int(e))
 }

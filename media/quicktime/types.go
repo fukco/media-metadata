@@ -1,4 +1,4 @@
-package atom
+package quicktime
 
 import (
 	"bytes"
@@ -19,23 +19,23 @@ import (
 func TypeMoov() media.BoxType { return media.StrToType("moov") }
 
 type Moov struct {
-	ContainerAtom
-	Atom
+	media.ContainerBox
+	media.Box
 }
 
 func init() {
-	appendAtomMap(TypeMoov(), Moov{})
+	media.AppendQuicktimeMap(TypeMoov(), Moov{})
 }
 
 /************************** meta **************************/
 func TypeMeta() media.BoxType { return media.StrToType("meta") }
 
 type Meta struct {
-	ContainerAtom
+	media.ContainerBox
 }
 
 func init() {
-	appendAtomMap(TypeMeta(), Meta{})
+	media.AppendQuicktimeMap(TypeMeta(), Meta{})
 }
 
 /************************** keys **************************/
@@ -48,17 +48,18 @@ type KeyEntry struct {
 }
 
 type Keys struct {
-	FullAtom
+	media.FullBox
 	EntryCount uint32
 	KeyEntries []KeyEntry
 }
 
 func init() {
-	appendAtomMap(TypeKeys(), Keys{})
+	media.AppendQuicktimeMap(TypeKeys(), Keys{})
 }
 
-func (a Keys) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media.Meta) error {
-	if _, err := r.Seek(int64(ai.Offset+ai.HeaderSize+4), io.SeekStart); err != nil {
+func (a Keys) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
+	if _, err := r.Seek(int64(bi.Offset+bi.HeaderSize+4), io.SeekStart); err != nil {
 		return err
 	}
 	buf := bytes.NewBuffer([]byte{})
@@ -93,17 +94,18 @@ func (a Keys) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 func TypeIlst() media.BoxType { return media.StrToType("ilst") }
 
 type Ilst struct {
-	FullAtom
+	media.FullBox
 	EntryCount uint32
 	KeyEntries []KeyEntry
 }
 
 func init() {
-	appendAtomMap(TypeIlst(), Ilst{})
+	media.AppendQuicktimeMap(TypeIlst(), Ilst{})
 }
 
-func (a Ilst) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media.Meta) error {
-	if _, err := ai.SeekToPayload(r); err != nil {
+func (a Ilst) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
+	if _, err := bi.SeekToPayload(r); err != nil {
 		return err
 	}
 	buf := bytes.NewBuffer([]byte{})
@@ -131,7 +133,7 @@ func (a Ilst) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 		} else {
 			metadataItems.MetadataItems[keys[base1Index-1].Value] = string(buf.Next(int(dataSize - 4))[12:])
 		}
-		if uint64(currentSeek)+uint64(itemSize) >= ai.Offset+ai.Size {
+		if uint64(currentSeek)+uint64(itemSize) >= bi.Offset+bi.Size {
 			break
 		}
 		_, _ = r.Seek(currentSeek+int64(itemSize), io.SeekStart)
@@ -140,7 +142,7 @@ func (a Ilst) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 		meta.Items = append(meta.Items, metadataItems)
 	}
 
-	if ctx.MajorBrand == string(media.SONYXAVC) {
+	if m.Ftyp.MajorBrand == string(media.SONYXAVC) {
 		if result, err := rtmd.ReadRTMD(r); err != nil {
 			return err
 		} else {
@@ -154,11 +156,11 @@ func (a Ilst) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 func TypeUdta() media.BoxType { return media.StrToType("udta") }
 
 type Udta struct {
-	ContainerAtom
+	media.ContainerBox
 }
 
 func init() {
-	appendAtomMap(TypeUdta(), Udta{})
+	media.AppendQuicktimeMap(TypeUdta(), Udta{})
 }
 
 /************************** PANA **************************/
@@ -168,11 +170,12 @@ type PANA struct {
 }
 
 func init() {
-	appendAtomMap(TypePANA(), PANA{})
+	media.AppendQuicktimeMap(TypePANA(), PANA{})
 }
 
-func (a PANA) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media.Meta) error {
-	if _, err := r.Seek(int64(ai.Offset+ai.HeaderSize+0x4080), io.SeekStart); err != nil {
+func (a PANA) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
+	if _, err := r.Seek(int64(bi.Offset+bi.HeaderSize+0x4080), io.SeekStart); err != nil {
 		return err
 	}
 	byteSlice := make([]byte, 12)
@@ -181,11 +184,11 @@ func (a PANA) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 	}
 	if bytes.Compare(byteSlice[:4], []byte{0xFF, 0xD8, 0xFF, 0xE1}) == 0 &&
 		bytes.Compare(byteSlice[6:], []byte{0x45, 0x78, 0x69, 0x66, 0, 0}) == 0 {
-		data := make([]byte, ai.Size-ai.HeaderSize-0x4080-12)
+		data := make([]byte, bi.Size-bi.HeaderSize-0x4080-12)
 		if _, err := r.Read(data); err != nil {
 			return err
 		} else {
-			if err := exif.Process(data, false, meta); err != nil {
+			if err := exif.Process(data, false, meta, manufacturer.PANASONIC); err != nil {
 				return err
 			}
 		}
@@ -200,19 +203,20 @@ type MVTG struct {
 }
 
 func init() {
-	appendAtomMap(TypeMVTG(), MVTG{})
+	media.AppendQuicktimeMap(TypeMVTG(), MVTG{})
 }
 
-func (a MVTG) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media.Meta) error {
-	ctx.Manufacturer = manufacturer.FUJIFILM
-	if _, err := r.Seek(int64(ai.Offset+ai.HeaderSize+16), io.SeekStart); err != nil {
+func (a MVTG) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
+	m.Manufacturer = manufacturer.FUJIFILM
+	if _, err := r.Seek(int64(bi.Offset+bi.HeaderSize+16), io.SeekStart); err != nil {
 		return err
 	}
-	data := make([]byte, ai.Size-ai.HeaderSize)
+	data := make([]byte, bi.Size-bi.HeaderSize)
 	if _, err := r.Read(data); err != nil {
 		return err
 	}
-	if err := exif.Process(data, true, meta); err != nil {
+	if err := exif.Process(data, true, meta, manufacturer.FUJIFILM); err != nil {
 		return err
 	}
 	return nil
@@ -225,17 +229,18 @@ type NCDT struct {
 }
 
 func init() {
-	appendAtomMap(TypeNCDT(), NCDT{})
+	media.AppendQuicktimeMap(TypeNCDT(), NCDT{})
 }
 
-func (a NCDT) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media.Meta) error {
+func (a NCDT) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
 	buf := bytes.NewBuffer([]byte{})
-	current, err := ai.SeekToPayload(r)
+	current, err := bi.SeekToPayload(r)
 	if err != nil {
 		return err
 	}
 	for {
-		if current >= int64(ai.Offset+ai.Size) {
+		if current >= int64(bi.Offset+bi.Size) {
 			break
 		}
 		if _, err := io.CopyN(buf, r, 8); err == nil {
@@ -247,7 +252,7 @@ func (a NCDT) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 				if err != nil {
 					return err
 				}
-				return nikon.ProcessNCTG(meta, content, ctx)
+				return nikon.ProcessNCTG(meta, content)
 			} else {
 				if _, err := r.Seek(int64(size-8), io.SeekCurrent); err != nil {
 					return err

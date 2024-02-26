@@ -513,8 +513,9 @@ var canonExifTagDefinitionMap = map[uint16]*TagDefinition{
 		}
 		return ""
 	}},
-	0x96: {Name: "Internal Serial Number"},
-	0xa0: {Name: string(GroupCanonProcessingInfo), SubTagDefinition: canonSubTagDefinitionMap[string(GroupCanonProcessingInfo)]},
+	0x96:   {Name: "Internal Serial Number"},
+	0xa0:   {Name: string(GroupCanonProcessingInfo), SubTagDefinition: canonSubTagDefinitionMap[string(GroupCanonProcessingInfo)]},
+	0x4026: {Name: string(GroupCanonLogInfo), SubTagDefinition: canonSubTagDefinitionMap[string(GroupCanonLogInfo)]},
 }
 
 var canonSubTagDefinitionMap = map[string]*SubTagDefinition{
@@ -1010,6 +1011,51 @@ var canonSubTagDefinitionMap = map[string]*SubTagDefinition{
 					return "n/a"
 				case 0xffff:
 					return "n/a"
+				default:
+					return ""
+				}
+			}},
+		}},
+	string(GroupCanonLogInfo): {tagDefinitionType: byIndex,
+		subTagDefinitionMap: map[interface{}]*TagDefinition{
+			4: {Name: "Compression Format", Fn: func(v interface{}) string {
+				switch v.(int64) {
+				case 0x00:
+					return "Editing (ALL-I)"
+				case 0x01:
+					return "Standard (IPB)"
+				case 0x02:
+					return "Light (IPB)"
+				case 0x03:
+					return "Motion JPEG"
+				case 0x04:
+					return "RAW"
+				default:
+					return ""
+				}
+			}},
+			9: {Name: "ColorSpace2", Fn: func(v interface{}) string {
+				switch v.(int64) {
+				case 0x00:
+					return "BT.709"
+				case 0x01:
+					return "BT.2020"
+				case 0x02:
+					return "Cinema gamut"
+				default:
+					return ""
+				}
+			}},
+			11: {Name: "Canon Log Version", Fn: func(v interface{}) string {
+				switch v.(int64) {
+				case 0x00:
+					return "OFF"
+				case 0x01:
+					return "Canon Log"
+				case 0x02:
+					return "Canon Log 2"
+				case 0x03:
+					return "Canon Log 3"
 				default:
 					return ""
 				}

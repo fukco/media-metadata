@@ -8,47 +8,44 @@ import (
 	"github.com/fukco/media-meta-parser/manufacturer/sony/nrtmd"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/media/mp4/box"
+	"github.com/fukco/media-meta-parser/media/mp4"
 	"github.com/fukco/media-meta-parser/metadata"
 	"strconv"
 	"strings"
 )
 
 type DRMetadata struct {
-	FileName      string `csv:"File Name"`
-	ClipDirectory string `csv:"Clip Directory"`
-
-	CameraType         string `csv:"Camera BoxType"`
-	CameraManufacturer string `csv:"Camera Manufacturer"`
-	CameraSerial       string `csv:"Camera Serial #"`
-	CameraId           string `csv:"Camera ID"`
-	CameraNotes        string `csv:"Camera Notes"`
-	CameraFormat       string `csv:"Camera Format"`
-	MediaType          string `csv:"Media BoxType"`
-	TimeLapseInterval  string `csv:"Time-lapse Interval"`
-	CameraFps          string `csv:"Camera FPS"`
-	ShutterType        string `csv:"Shutter BoxType"`
-	Shutter            string `csv:"Shutter"`
-	ISO                string `csv:"ISO"`
-	WhitePoint         string `csv:"White Point (Kelvin)"`
-	WhiteBalanceTint   string `csv:"White Balance Tint"`
-	CameraFirmware     string `csv:"Camera Firmware"`
-	LensType           string `csv:"Lens BoxType"`
-	LensNumber         string `csv:"Lens Number"`
-	LensNotes          string `csv:"Lens Notes"`
-	CameraApertureType string `csv:"Camera Aperture BoxType"`
-	CameraAperture     string `csv:"Camera Aperture"`
-	FocalPoint         string `csv:"Focal Point (mm)"`
-	Distance           string `csv:"Distance"`
-	Filter             string `csv:"Filter"`
-	NDFilter           string `csv:"ND Filter"`
-	CompressionRatio   string `csv:"Compression Ratio"`
-	CodecBitrate       string `csv:"Codec Bitrate"`
-	SensorAreaCaptured string `csv:"Sensor Area Captured"`
-	PARNotes           string `csv:"PAR Notes"`
-	AspectRatioNotes   string `csv:"Aspect Ratio Notes"`
-	GammaNotes         string `csv:"Gamma Notes"`
-	ColorSpaceNotes    string `csv:"Color Space Notes"`
+	CameraType         string
+	CameraManufacturer string
+	CameraSerial       string
+	CameraId           string
+	CameraNotes        string
+	CameraFormat       string
+	MediaType          string
+	TimeLapseInterval  string
+	CameraFps          string
+	ShutterType        string
+	Shutter            string
+	ISO                string
+	WhitePoint         string
+	WhiteBalanceTint   string
+	CameraFirmware     string
+	LensType           string
+	LensNumber         string
+	LensNotes          string
+	CameraApertureType string
+	CameraAperture     string
+	FocalPoint         string
+	Distance           string
+	Filter             string
+	NDFilter           string
+	CompressionRatio   string
+	CodecBitrate       string
+	SensorAreaCaptured string
+	PARNotes           string
+	AspectRatioNotes   string
+	GammaNotes         string
+	ColorSpaceNotes    string
 }
 
 func drMetadataFromSonyXML(xml *nrtmd.NonRealTimeMeta, drMetadata *DRMetadata) error {
@@ -145,19 +142,20 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 	if makerTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s", exif.MakerIFD, exif.Panasonic)]; ok {
 		for i := range makerTags {
 			tag := makerTags[i]
-			if tag.ID == 0x02 {
+			switch tag.ID {
+			case 0x02:
 				drMetadata.CameraFirmware = tag.Value
-			} else if tag.ID == 0x25 {
+			case 0x25:
 				drMetadata.CameraSerial = tag.Value
-			} else if tag.ID == 0x44 {
+			case 0x44:
 				drMetadata.WhitePoint = tag.Value
-			} else if tag.ID == 0x51 {
+			case 0x51:
 				drMetadata.LensType = tag.Value
-			} else if tag.ID == 0x52 {
+			case 0x52:
 				drMetadata.LensNumber = tag.Value
-			} else if tag.ID == 0x9d {
+			case 0x9d:
 				drMetadata.NDFilter = tag.Value
-			} else if tag.ID == 0x9f {
+			case 0x9f:
 				drMetadata.ShutterType = tag.Value
 			}
 		}
@@ -179,7 +177,7 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 			tag := makerTags[i]
 			if tag.ID == 0x7 {
 				drMetadata.CameraFirmware = tag.Value
-			} else if drMetadata.LensType == "" && tag.ID == 0x95 {
+			} else if tag.ID == 0x95 && drMetadata.LensType == "" {
 				drMetadata.LensType = tag.Value
 			}
 		}
@@ -197,6 +195,16 @@ func drMetadataFromExif(exifMeta *exif.ExifMeta, drMetadata *DRMetadata) error {
 			tag := makerSubTags[i]
 			if tag.ID == 9 {
 				drMetadata.WhitePoint = tag.Value
+			}
+		}
+	}
+	if makerSubTags, ok := exifMeta.Tags[fmt.Sprintf("%s: %s/%s", exif.MakerIFD, exif.Canon, exif.GroupCanonLogInfo)]; ok {
+		for i := range makerSubTags {
+			tag := makerSubTags[i]
+			if tag.ID == 9 {
+				drMetadata.ColorSpaceNotes = tag.Value
+			} else if tag.ID == 11 {
+				drMetadata.GammaNotes = tag.Value
 			}
 		}
 	}
@@ -235,7 +243,7 @@ func drMetadataFromMetadataItems(metadataItems *metadata.Items, drMetadata *DRMe
 	return nil
 }
 
-func drMetadataFromUuidProfile(profile *box.Profile, drMetadata *DRMetadata) error {
+func drMetadataFromUuidProfile(profile *mp4.Profile, drMetadata *DRMetadata) error {
 	drMetadata.CodecBitrate = profile.VideoProfile.VideoAvgBitrate
 	drMetadata.PARNotes = profile.VideoProfile.PixelAspectRatio
 	return nil
@@ -269,36 +277,36 @@ func drMetadataFromNctg(nctg *nikon.NCTG, drMetadata *DRMetadata) error {
 	return nil
 }
 
-func DRMetadataFromMeta(meta *media.Meta, csv *DRMetadata) error {
+func DRMetadataFromMeta(meta *media.Meta, drMetadata *DRMetadata) error {
 	for i := range meta.Items {
 		item := meta.Items[i]
 		switch item.(type) {
 		case *nrtmd.NonRealTimeMeta:
-			if err := drMetadataFromSonyXML(item.(*nrtmd.NonRealTimeMeta), csv); err != nil {
+			if err := drMetadataFromSonyXML(item.(*nrtmd.NonRealTimeMeta), drMetadata); err != nil {
 				return err
 			}
 		case *rtmd.RTMD:
-			if err := drMetadataFromSonyRTMD(item.(*rtmd.RTMD), csv); err != nil {
+			if err := drMetadataFromSonyRTMD(item.(*rtmd.RTMD), drMetadata); err != nil {
 				return err
 			}
 		case *panasonic.ClipMain:
-			if err := drMetadataFromPanasonicXML(item.(*panasonic.ClipMain), csv); err != nil {
+			if err := drMetadataFromPanasonicXML(item.(*panasonic.ClipMain), drMetadata); err != nil {
 				return err
 			}
 		case *exif.ExifMeta:
-			if err := drMetadataFromExif(item.(*exif.ExifMeta), csv); err != nil {
+			if err := drMetadataFromExif(item.(*exif.ExifMeta), drMetadata); err != nil {
 				return err
 			}
 		case *metadata.Items:
-			if err := drMetadataFromMetadataItems(item.(*metadata.Items), csv); err != nil {
+			if err := drMetadataFromMetadataItems(item.(*metadata.Items), drMetadata); err != nil {
 				return err
 			}
-		case *box.Profile:
-			if err := drMetadataFromUuidProfile(item.(*box.Profile), csv); err != nil {
+		case *mp4.Profile:
+			if err := drMetadataFromUuidProfile(item.(*mp4.Profile), drMetadata); err != nil {
 				return err
 			}
 		case *nikon.NCTG:
-			if err := drMetadataFromNctg(item.(*nikon.NCTG), csv); err != nil {
+			if err := drMetadataFromNctg(item.(*nikon.NCTG), drMetadata); err != nil {
 				return err
 			}
 		default:

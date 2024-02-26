@@ -5,7 +5,7 @@ import (
 	"github.com/fukco/media-meta-parser/manufacturer/sony/nrtmd"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/media/mp4/box"
+	"github.com/fukco/media-meta-parser/media/mp4"
 	"strings"
 	"time"
 )
@@ -92,7 +92,7 @@ func NrtmdDispFromSonyRtmd(rtmd *rtmd.RTMD, nrtmdDisp *NrtmdDisp) error {
 	return nil
 }
 
-func NrtmdDispFromUuidProfile(profile *box.Profile, nrtmdDisp *NrtmdDisp) error {
+func NrtmdDispFromUuidProfile(profile *mp4.Profile, nrtmdDisp *NrtmdDisp) error {
 	nrtmdDisp.VideoBitrate = profile.VideoProfile.VideoAvgBitrate
 	return nil
 }
@@ -109,8 +109,8 @@ func NrtmdDispFromMeta(meta *media.Meta, nrtmdDisp *NrtmdDisp) error {
 			if err := NrtmdDispFromSonyRtmd(item.(*rtmd.RTMD), nrtmdDisp); err != nil {
 				return err
 			}
-		case *box.Profile:
-			if err := NrtmdDispFromUuidProfile(item.(*box.Profile), nrtmdDisp); err != nil {
+		case *mp4.Profile:
+			if err := NrtmdDispFromUuidProfile(item.(*mp4.Profile), nrtmdDisp); err != nil {
 				return err
 			}
 		}

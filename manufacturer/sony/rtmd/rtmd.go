@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/fukco/media-meta-parser/common"
 	"io"
+	"math"
 )
 
 type metadataSetType string
@@ -80,9 +81,26 @@ type MetadataSetInfo struct {
 	bodyLength uint16
 }
 
+type rawData []byte
+
 type tag struct {
 	name tagName
-	data []byte
+	data rawData
+}
+
+func (data rawData) BigEndianUint16() uint16 {
+	return binary.BigEndian.Uint16(data)
+}
+
+func (data rawData) BigEndianUint32() uint32 {
+	return binary.BigEndian.Uint32(data)
+}
+
+func (data rawData) CommonDistanceFormat() float64 {
+	u := binary.BigEndian.Uint16(data)
+	e := int8(u>>8&0xf0) >> 4
+	m := u & 0x0fff
+	return float64(m) * math.Pow10(int(e))
 }
 
 func ReadRTMD(r io.ReadSeeker) (*RTMD, error) {

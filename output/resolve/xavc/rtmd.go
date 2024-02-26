@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/fukco/media-meta-parser/manufacturer/sony/rtmd"
 	"github.com/fukco/media-meta-parser/media"
-	"github.com/fukco/media-meta-parser/media/mp4/box"
 	"io"
 )
 
@@ -65,7 +64,7 @@ func rtmd2rtmdDisp(rtmd *rtmd.RTMD) *RtmdDisp {
 	return rtmdDisp
 }
 
-func ReadMdat(r io.ReadSeeker) (*box.Info, error) {
+func ReadMdat(r io.ReadSeeker) (*media.BoxInfo, error) {
 	buf := bytes.NewBuffer([]byte{})
 	offset := uint64(0)
 	if _, err := r.Seek(0, io.SeekStart); err != nil {
@@ -86,7 +85,7 @@ func ReadMdat(r io.ReadSeeker) (*box.Info, error) {
 			headerSize = 16
 		}
 		if boxType == "mdat" {
-			boxInfo := &box.Info{
+			boxInfo := &media.BoxInfo{
 				Offset:     offset,
 				Size:       size,
 				HeaderSize: uint64(headerSize),
@@ -104,7 +103,7 @@ func ReadMdat(r io.ReadSeeker) (*box.Info, error) {
 	}
 }
 
-func getHeaderAndBlockSize(r io.ReadSeeker, mdatBox *box.Info) (int, []byte, int64, error) {
+func getHeaderAndBlockSize(r io.ReadSeeker, mdatBox *media.BoxInfo) (int, []byte, int64, error) {
 	_, err := r.Seek(int64(mdatBox.Offset+mdatBox.HeaderSize), io.SeekStart)
 	if err != nil {
 		return 0, nil, 0, err

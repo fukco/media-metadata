@@ -1,20 +1,27 @@
-package box
+package media
 
 import (
-	"github.com/fukco/media-meta-parser/media"
 	"io"
 	"os"
 	"reflect"
 )
 
 type IBox interface {
-	GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media.Meta) error
+	GetMeta(m *Media, bi *BoxInfo, meta *Meta) error
 }
 
-var Map = make(map[media.BoxType]interface{}, 64)
+var Mp4Map = make(map[BoxType]interface{}, 64)
+var QuicktimeMap = make(map[BoxType]interface{}, 64)
+var CommonMap = make(map[BoxType]interface{}, 64)
 
-func AppendBoxMap(boxType media.BoxType, i interface{}) {
-	Map[boxType] = i
+func AppendMp4Map(boxType BoxType, i interface{}) {
+	Mp4Map[boxType] = i
+}
+func AppendQuicktimeMap(boxType BoxType, i interface{}) {
+	QuicktimeMap[boxType] = i
+}
+func AppendCommonMap(boxType BoxType, i interface{}) {
+	CommonMap[boxType] = i
 }
 
 // Box is ISO/IEC 14496-12 Box
@@ -34,19 +41,19 @@ type FullBox struct {
 type ContainerBox struct {
 }
 
-func (b *ContainerBox) getMeta(io.ReadSeeker, *Info, *media.Context) error {
+func (b *ContainerBox) getMeta(m *Media, bi *BoxInfo, meta *Meta) error {
 	return nil
 }
 
-func isSupportedBox(bi *Info) bool {
-	if _, ok := Map[bi.Type]; ok {
+func isSupportedBox(bi *BoxInfo, boxMap map[BoxType]interface{}) bool {
+	if _, ok := boxMap[bi.Type]; ok {
 		return true
 	}
 	return false
 }
 
-func IsContainerBox(bi *Info) bool {
-	if v, ok := Map[bi.Type]; ok {
+func IsContainerBox(bi *BoxInfo, boxMap map[BoxType]interface{}) bool {
+	if v, ok := boxMap[bi.Type]; ok {
 		t := reflect.TypeOf(v)
 		for i := 0; i < t.NumField(); i++ {
 			if reflect.TypeOf(ContainerBox{}) == t.Field(i).Type {
@@ -57,21 +64,21 @@ func IsContainerBox(bi *Info) bool {
 	return false
 }
 
-func GetMetaBoxes(file *os.File) ([]*Info, error) {
-	boxInfos := make([]*Info, 0, 8)
+func GetMetaBoxes(file *os.File, boxMap map[BoxType]interface{}) ([]*BoxInfo, error) {
+	boxInfos := make([]*BoxInfo, 0, 8)
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
 	for {
 		// read 8 bytes
 		if bi, err := ReadBoxInfo(file); err == nil {
-			if isSupportedBox(bi) {
-				if IsContainerBox(bi) {
+			if isSupportedBox(bi, boxMap) {
+				if IsContainerBox(bi, boxMap) {
 					_, err = bi.SeekToPayload(file)
 					if err != nil {
 						return nil, err
 					}
-					if isFullBox(bi) { //fullBox has 1 byte version and 3 bytes flags as box body
+					if isFullBox(bi, boxMap) { //fullBox has 1 byte version and 3 bytes flags as box body
 						_, err := file.Seek(4, io.SeekCurrent)
 						if err != nil {
 							return nil, err

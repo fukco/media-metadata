@@ -42,4 +42,5 @@ const (
 	GroupCanonCameraSettings GroupName = "Canon CameraSettings"
 	GroupCanonShotInfo       GroupName = "Canon ShotInfo"
 	GroupCanonProcessingInfo GroupName = "Processing Info"
+	GroupCanonLogInfo        GroupName = "Canon LogInfo"
 )

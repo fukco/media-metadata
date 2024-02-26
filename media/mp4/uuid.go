@@ -1,4 +1,4 @@
-package box
+package mp4
 
 type Profile struct {
 	AudioProfile      AudioProfile

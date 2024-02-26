@@ -1,15 +1,14 @@
-package box
+package media
 
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/fukco/media-meta-parser/media"
 	"io"
 	"reflect"
 )
 
-// Info has common information of box
-type Info struct {
+// BoxInfo has common information of box
+type BoxInfo struct {
 	// Offset specifies an offset of the box in a file.
 	Offset uint64
 
@@ -20,7 +19,7 @@ type Info struct {
 	HeaderSize uint64
 
 	// Type specifies box type which is represented by 4 characters.
-	Type media.BoxType
+	Type BoxType
 
 	// ExtendedType specifies box extended type which is represented by 16 characters.
 	ExtendedType [16]byte
@@ -31,13 +30,13 @@ const (
 )
 
 // ReadBoxInfo reads common fields which are defined as "Box" class member at ISO/IEC 14496-12.
-func ReadBoxInfo(r io.ReadSeeker) (*Info, error) {
+func ReadBoxInfo(r io.ReadSeeker) (*BoxInfo, error) {
 	offset, err := r.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return nil, err
 	}
 
-	bi := &Info{
+	bi := &BoxInfo{
 		Offset: uint64(offset),
 	}
 
@@ -51,7 +50,7 @@ func ReadBoxInfo(r io.ReadSeeker) (*Info, error) {
 	// pick size and type
 	data := buf.Next(defaultHeaderSize)
 	bi.Size = uint64(binary.BigEndian.Uint32(data[:4]))
-	bi.Type = media.BoxType{data[4], data[5], data[6], data[7]}
+	bi.Type = BoxType{data[4], data[5], data[6], data[7]}
 
 	if bi.Size == 1 {
 		// read more 8 bytes
@@ -72,7 +71,7 @@ func ReadBoxInfo(r io.ReadSeeker) (*Info, error) {
 		}
 	}
 
-	if bi.Type == media.StrToType("uuid") {
+	if bi.Type == StrToType("uuid") {
 		if _, err := io.CopyN(buf, r, 16); err != nil {
 			return nil, err
 		}
@@ -81,9 +80,9 @@ func ReadBoxInfo(r io.ReadSeeker) (*Info, error) {
 	return bi, nil
 }
 
-func isFullBox(bi *Info) bool {
-	if _, ok := Map[bi.Type]; ok {
-		t := reflect.TypeOf(Map[bi.Type])
+func isFullBox(bi *BoxInfo, boxMap map[BoxType]interface{}) bool {
+	if _, ok := boxMap[bi.Type]; ok {
+		t := reflect.TypeOf(boxMap[bi.Type])
 		for i := 0; i < t.NumField(); i++ {
 			if reflect.TypeOf(FullBox{}) == t.Field(i).Type {
 				return true
@@ -93,14 +92,14 @@ func isFullBox(bi *Info) bool {
 	return false
 }
 
-func (bi *Info) SeekToStart(s io.Seeker) (int64, error) {
+func (bi *BoxInfo) SeekToStart(s io.Seeker) (int64, error) {
 	return s.Seek(int64(bi.Offset), io.SeekStart)
 }
 
-func (bi *Info) SeekToPayload(s io.Seeker) (int64, error) {
+func (bi *BoxInfo) SeekToPayload(s io.Seeker) (int64, error) {
 	return s.Seek(int64(bi.Offset+bi.HeaderSize), io.SeekStart)
 }
 
-func (bi *Info) SeekToEnd(s io.Seeker) (int64, error) {
+func (bi *BoxInfo) SeekToEnd(s io.Seeker) (int64, error) {
 	return s.Seek(int64(bi.Offset+bi.Size), io.SeekStart)
 }

@@ -337,7 +337,7 @@ func pictureControlFormat([]byte) string {
 
 }
 
-func ProcessNCTG(meta *media.Meta, content []byte, ctx *media.Context) error {
+func ProcessNCTG(meta *media.Meta, content []byte) error {
 	buf := bytes.NewBuffer(content)
 	nctg := &NCTG{}
 	for {

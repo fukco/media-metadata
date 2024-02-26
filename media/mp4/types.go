@@ -1,4 +1,4 @@
-package box
+package mp4
 
 import (
 	"bytes"
@@ -20,39 +20,40 @@ import (
 func TypeMoov() media.BoxType { return media.StrToType("moov") }
 
 type Moov struct {
-	ContainerBox
-	Box
+	media.ContainerBox
+	media.Box
 }
 
 func init() {
-	AppendBoxMap(TypeMoov(), Moov{})
+	media.AppendMp4Map(TypeMoov(), Moov{})
 }
 
 /************************** meta **************************/
 func TypeMeta() media.BoxType { return media.StrToType("meta") }
 
 type Meta struct {
-	ContainerBox
-	FullBox
+	media.ContainerBox
+	media.FullBox
 }
 
 func init() {
-	AppendBoxMap(TypeMeta(), Meta{})
+	media.AppendMp4Map(TypeMeta(), Meta{})
 }
 
 /************************** xml  **************************/
 func TypeXml() media.BoxType { return media.StrToType("xml ") }
 
 type Xml struct {
-	FullBox
+	media.FullBox
 }
 
 func init() {
-	AppendBoxMap(TypeXml(), Xml{})
+	media.AppendMp4Map(TypeXml(), Xml{})
 }
 
-func (b Xml) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media.Meta) error {
-	if ctx.Manufacturer == manufacturer.SONY {
+func (b Xml) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	if m.Manufacturer == manufacturer.SONY {
+		var r io.ReadSeeker = m.File
 		if _, err := r.Seek(int64(bi.Offset+bi.HeaderSize+4), io.SeekStart); err != nil {
 			return err
 		}
@@ -76,18 +77,19 @@ func (b Xml) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media.
 func TypeMdat() media.BoxType { return media.StrToType("mdat") }
 
 type Mdat struct {
-	Box
+	media.Box
 }
 
 func init() {
-	AppendBoxMap(TypeMdat(), Mdat{})
+	media.AppendMp4Map(TypeMdat(), Mdat{})
 }
 
-func (b Mdat) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media.Meta) error {
+func (b Mdat) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
 	if _, err := r.Seek(int64(bi.Offset+bi.HeaderSize), io.SeekStart); err != nil {
 		return err
 	}
-	if ctx.MajorBrand == string(media.SONYXAVC) {
+	if m.Ftyp.MajorBrand == string(media.SONYXAVC) {
 		buf := bytes.NewBuffer([]byte{})
 		if _, err := io.CopyN(buf, r, 1024); err != nil {
 			return err
@@ -114,16 +116,17 @@ func (b Mdat) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media
 func TypeUuid() media.BoxType { return media.StrToType("uuid") }
 
 type Uuid struct {
-	Box
+	media.Box
 }
 
 func init() {
-	AppendBoxMap(TypeUuid(), Uuid{})
+	media.AppendMp4Map(TypeUuid(), Uuid{})
 }
 
-func (b Uuid) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media.Meta) error {
+func (b Uuid) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
 	if bi.ExtendedType == [16]byte{0x85, 0xC0, 0xB6, 0x87, 0x82, 0x0F, 0x11, 0xE0, 0x81, 0x11, 0xF4, 0xCE, 0x46, 0x2B, 0x6A, 0x48} {
-		ctx.Manufacturer = manufacturer.CANON
+		m.Manufacturer = manufacturer.CANON
 		buf := bytes.NewBuffer([]byte{})
 		if _, err := r.Seek(int64(bi.Offset+bi.HeaderSize+16), io.SeekStart); err != nil {
 			return err
@@ -153,7 +156,7 @@ func (b Uuid) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media
 				}
 				data := make([]byte, cndaSize-8)
 				copy(data, buf.Next(int(cndaSize-8)))
-				return exif.ProcessJPEG(data, meta)
+				return exif.ProcessJPEG(data, meta, m.Manufacturer)
 			}
 			if _, err = r.Seek(current+int64(size), io.SeekStart); err != nil {
 				return err
@@ -214,32 +217,33 @@ func (b Uuid) GetMeta(r io.ReadSeeker, bi *Info, ctx *media.Context, meta *media
 func TypeUdta() media.BoxType { return media.StrToType("udta") }
 
 type Udta struct {
-	ContainerBox
+	media.ContainerBox
 }
 
 func init() {
-	AppendBoxMap(TypeUdta(), Udta{})
+	media.AppendMp4Map(TypeUdta(), Udta{})
 }
 
 /************************** NCDT **************************/
 func TypeNCDT() media.BoxType { return media.StrToType("NCDT") }
 
 type NCDT struct {
-	Box
+	media.Box
 }
 
 func init() {
-	AppendBoxMap(TypeNCDT(), NCDT{})
+	media.AppendMp4Map(TypeNCDT(), NCDT{})
 }
 
-func (a NCDT) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media.Meta) error {
+func (a NCDT) GetMeta(m *media.Media, bi *media.BoxInfo, meta *media.Meta) error {
+	var r io.ReadSeeker = m.File
 	buf := bytes.NewBuffer([]byte{})
-	current, err := ai.SeekToPayload(r)
+	current, err := bi.SeekToPayload(r)
 	if err != nil {
 		return err
 	}
 	for {
-		if current >= int64(ai.Offset+ai.Size) {
+		if current >= int64(bi.Offset+bi.Size) {
 			break
 		}
 		if _, err := io.CopyN(buf, r, 8); err == nil {
@@ -251,7 +255,7 @@ func (a NCDT) GetMeta(r io.ReadSeeker, ai *Info, ctx *media.Context, meta *media
 				if err != nil {
 					return err
 				}
-				return nikon.ProcessNCTG(meta, content, ctx)
+				return nikon.ProcessNCTG(meta, content)
 			} else {
 				if _, err := r.Seek(int64(size-8), io.SeekCurrent); err != nil {
 					return err

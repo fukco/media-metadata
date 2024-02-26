@@ -19,7 +19,7 @@ func readByteOrder(data []byte) (binary.ByteOrder, error) {
 	return nil, errors.New("illegal byte order")
 }
 
-func readIFD(data []byte, offset uint32, directoryType DirectoryType, exif *Base, meta *media.Meta) error {
+func readIFD(data []byte, offset uint32, directoryType DirectoryType, exif *Base, meta *media.Meta, mfr manufacturer.Manufacturer) error {
 	order := exif.TiffHeader.Order
 	numOfDE := order.Uint16(data[offset : offset+2])
 	entries := make([]*TiffEntry, 0, numOfDE)
@@ -43,7 +43,7 @@ func readIFD(data []byte, offset uint32, directoryType DirectoryType, exif *Base
 			entry.Val = valueOrOffsetBytes
 		}
 		if tagId == 0x8769 {
-			if err := readIFD(data, order.Uint32(valueOrOffsetBytes), ExifIFD, exif, meta); err != nil {
+			if err := readIFD(data, order.Uint32(valueOrOffsetBytes), ExifIFD, exif, meta, mfr); err != nil {
 				return err
 			}
 		} else if tagId == 0x927c {
@@ -55,7 +55,7 @@ func readIFD(data []byte, offset uint32, directoryType DirectoryType, exif *Base
 				if err := readMakerNotes(data[order.Uint32(valueOrOffsetBytes):], 12, exif, FUJIFILM); err != nil {
 					return err
 				}
-			} else if meta.Context.Manufacturer == manufacturer.CANON {
+			} else if mfr == manufacturer.CANON {
 				if err := readMakerNotes(data, order.Uint32(valueOrOffsetBytes), exif, Canon); err != nil {
 					return err
 				}
@@ -77,7 +77,7 @@ func readIFD(data []byte, offset uint32, directoryType DirectoryType, exif *Base
 	exif.Directories = append(exif.Directories, directory)
 
 	if nextIFDOffset != 0 {
-		if err := readIFD(data, nextIFDOffset, IFD1, exif, meta); err != nil {
+		if err := readIFD(data, nextIFDOffset, IFD1, exif, meta, mfr); err != nil {
 			return err
 		}
 	}
@@ -316,7 +316,7 @@ func toExifMeta(base *Base) (*ExifMeta, error) {
 	return exifMeta, nil
 }
 
-func readExif(data []byte, ignoreHeader bool, meta *media.Meta) (*Base, error) {
+func readExif(data []byte, ignoreHeader bool, meta *media.Meta, mfr manufacturer.Manufacturer) (*Base, error) {
 	var order binary.ByteOrder = binary.LittleEndian
 	var offset uint32
 	if !ignoreHeader {
@@ -329,14 +329,14 @@ func readExif(data []byte, ignoreHeader bool, meta *media.Meta) (*Base, error) {
 	}
 	header := &TiffHeader{order, offset}
 	exif := &Base{TiffHeader: header}
-	if err := readIFD(data, offset, IFD0, exif, meta); err != nil {
+	if err := readIFD(data, offset, IFD0, exif, meta, mfr); err != nil {
 		return nil, err
 	}
 	return exif, nil
 }
 
-func Process(data []byte, ignoreHeader bool, meta *media.Meta) error {
-	exif, _ := readExif(data, ignoreHeader, meta)
+func Process(data []byte, ignoreHeader bool, meta *media.Meta, mfr manufacturer.Manufacturer) error {
+	exif, _ := readExif(data, ignoreHeader, meta, mfr)
 	exifMeta, err := toExifMeta(exif)
 	if err != nil {
 		return err
@@ -345,8 +345,8 @@ func Process(data []byte, ignoreHeader bool, meta *media.Meta) error {
 	return nil
 }
 
-func ProcessJPEG(data []byte, meta *media.Meta) error {
+func ProcessJPEG(data []byte, meta *media.Meta, mfr manufacturer.Manufacturer) error {
 	exifIdentifierCodeIndex := bytes.Index(data, []byte("Exif"))
 	size := binary.BigEndian.Uint16(data[exifIdentifierCodeIndex-2 : exifIdentifierCodeIndex])
-	return Process(data[exifIdentifierCodeIndex+6:exifIdentifierCodeIndex-2+int(size)], false, meta)
+	return Process(data[exifIdentifierCodeIndex+6:exifIdentifierCodeIndex-2+int(size)], false, meta, mfr)
 }

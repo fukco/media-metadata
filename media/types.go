@@ -1,7 +1,7 @@
 package media
 
 type Type string
-type SupportMajorBrand string
+type Brand string
 type Extension string
 
 const (
@@ -10,10 +10,11 @@ const (
 )
 
 const (
-	MP42     SupportMajorBrand = "mp42"
-	SONYXAVC SupportMajorBrand = "XAVC"
-	QT       SupportMajorBrand = "qt  "
-	NIKO     SupportMajorBrand = "niko"
+	MP42     Brand = "mp42"
+	SONYXAVC Brand = "XAVC"
+	QT       Brand = "qt  "
+	NIKO     Brand = "niko"
+	PANA     Brand = "pana"
 )
 
 const (
