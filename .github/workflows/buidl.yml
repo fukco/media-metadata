@@ -8,14 +8,14 @@ jobs:
       fail-fast: false
       matrix:
         go_version:
-          - 1.17
+          - 1.21
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Golang CGO cross compiler dynamic link library
-        uses: crazy-max/ghaction-xgo@v1
+        uses: crazy-max/ghaction-xgo@v3
         with:
           xgo_version: latest
           go_version: ${{ matrix.go_version }}
@@ -28,7 +28,7 @@ jobs:
           ldflags: -s -w
           buildmode: c-shared
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: my-artifact
           path: build
