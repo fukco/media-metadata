@@ -7,6 +7,7 @@ package main
 struct DRMetadata
 {
 	bool IsSupportMedia;
+	char *DateRecorded;
 	char *CameraType;
 	char *CameraManufacturer;
 	char *CameraSerial;
@@ -17,11 +18,13 @@ struct DRMetadata
 	char *TimeLapseInterval;
 	char *CameraFps;
 	char *ShutterType;
+	char *ShutterAngle;
 	char *Shutter;
 	char *ISO;
 	char *WhitePoint;
 	char *WhiteBalanceTint;
 	char *CameraFirmware;
+	char *LUTUsed;
 	char *LensType;
 	char *LensNumber;
 	char *LensNotes;
@@ -89,37 +92,17 @@ import "C"
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
-	"github.com/fukco/media-meta-parser/media"
-	_ "github.com/fukco/media-meta-parser/media/quicktime"
-	"github.com/fukco/media-meta-parser/output/resolve"
-	"github.com/fukco/media-meta-parser/output/resolve/xavc"
+	"github.com/fukco/media-metadata/internal"
+	"github.com/fukco/media-metadata/internal/manufacturer"
+	"github.com/fukco/media-metadata/internal/meta"
+	"github.com/fukco/media-metadata/internal/output/resolve"
+	"github.com/fukco/media-metadata/internal/output/resolve/xavc"
 	"os"
 )
 
-func getMediaFile(p string) (*media.Media, error) {
-	if fileInfo, err := os.Stat(p); err != nil {
-		return nil, err
-	} else {
-		if fileInfo.IsDir() {
-			return nil, errors.New("input file path is illegal")
-		}
-	}
-	mediaFile, err := os.Open(p)
-	if err != nil {
-		return nil, err
-	}
-	m := media.NewMedia(mediaFile)
-	if m == nil {
-		return nil, errors.New("not support media file")
-	}
-
-	return m, nil
-}
-
-func consoleOutput(meta *media.Meta) {
+func consoleOutput(meta *meta.Metadata) {
 	if s, err := json.Marshal(meta); err != nil {
 		fmt.Println(err)
 	} else {
@@ -128,22 +111,16 @@ func consoleOutput(meta *media.Meta) {
 }
 
 func drProcessMediaFile(absPath string) *resolve.DRMetadata {
-	m, err := getMediaFile(absPath)
-	defer m.Close()
+	f, err := internal.GetMediaFile(absPath)
+	defer f.Close()
 	if err != nil {
 		return nil
-	} else {
-		meta := m.ExtractMeta()
-		if meta == nil {
-			return nil
-		}
-		drMetadata := &resolve.DRMetadata{}
-		if err := resolve.DRMetadataFromMeta(meta, drMetadata); err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		return drMetadata
 	}
+	m, err := meta.Read(f)
+	if err != nil || m == nil {
+		return nil
+	}
+	return resolve.GetDRMetadataFromMeta(m)
 }
 
 //export DRProcessMediaFile
@@ -154,6 +131,7 @@ func DRProcessMediaFile(absPath *C.char) C.struct_DRMetadata {
 		result.IsSupportMedia = C._Bool(false)
 	} else {
 		result.IsSupportMedia = C._Bool(true)
+		result.DateRecorded = C.CString(drMetadata.DateRecorded)
 		result.CameraType = C.CString(drMetadata.CameraType)
 		result.CameraManufacturer = C.CString(drMetadata.CameraManufacturer)
 		result.CameraSerial = C.CString(drMetadata.CameraSerial)
@@ -164,11 +142,13 @@ func DRProcessMediaFile(absPath *C.char) C.struct_DRMetadata {
 		result.TimeLapseInterval = C.CString(drMetadata.TimeLapseInterval)
 		result.CameraFps = C.CString(drMetadata.CameraFps)
 		result.ShutterType = C.CString(drMetadata.ShutterType)
+		result.ShutterAngle = C.CString(drMetadata.ShutterAngle)
 		result.Shutter = C.CString(drMetadata.Shutter)
 		result.ISO = C.CString(drMetadata.ISO)
 		result.WhitePoint = C.CString(drMetadata.WhitePoint)
 		result.WhiteBalanceTint = C.CString(drMetadata.WhiteBalanceTint)
 		result.CameraFirmware = C.CString(drMetadata.CameraFirmware)
+		result.LUTUsed = C.CString(drMetadata.LUTUsed)
 		result.LensType = C.CString(drMetadata.LensType)
 		result.LensNumber = C.CString(drMetadata.LensNumber)
 		result.LensNotes = C.CString(drMetadata.LensNotes)
@@ -190,26 +170,18 @@ func DRProcessMediaFile(absPath *C.char) C.struct_DRMetadata {
 }
 
 func drSonyNrtmdDisp(absPath string) *xavc.NrtmdDisp {
-	nrtmdDisp := &xavc.NrtmdDisp{}
-	m, err := getMediaFile(absPath)
-	defer m.Close()
+	f, err := internal.GetMediaFile(absPath)
+	defer f.Close()
+
 	if err != nil {
+		fmt.Println(err)
 		return nil
-	} else {
-		var meta *media.Meta
-		if m.Ftyp.MajorBrand != "XAVC" {
-			return nil
-		}
-		meta = m.ExtractMeta()
-		if meta == nil {
-			return nil
-		}
-		if err := xavc.NrtmdDispFromMeta(meta, nrtmdDisp); err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		return nrtmdDisp
 	}
+	m, err := meta.Read(f)
+	if err != nil || m == nil || m.Manufacturer != manufacturer.SONY {
+		return nil
+	}
+	return xavc.NrtmdDispFromMeta(m)
 }
 
 //export DRSonyNrtmdDisp
@@ -236,7 +208,7 @@ func DRSonyNrtmdDisp(absPath *C.char) C.struct_DRSonyNrtmd {
 	return result
 }
 
-func drSonyRtmdDisp(absPath string, start int, count int, offset int64) *xavc.RtmdCollection {
+func drSonyRtmdDisp(absPath string, start int, count int) *xavc.RtmdCollection {
 	f, err := os.Open(absPath)
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -246,7 +218,7 @@ func drSonyRtmdDisp(absPath string, start int, count int, offset int64) *xavc.Rt
 	if err != nil {
 		return nil
 	} else {
-		if rtmdCollection, err := xavc.ReadRtmdSlice(f, start, count, offset); err != nil {
+		if rtmdCollection, err := xavc.ReadRtmdSlice(f, start, count); err != nil {
 			return nil
 		} else {
 			return rtmdCollection
@@ -255,10 +227,9 @@ func drSonyRtmdDisp(absPath string, start int, count int, offset int64) *xavc.Rt
 }
 
 //export DrSonyRtmdDisp
-func DrSonyRtmdDisp(absPath *C.char, start C.int, count C.int, offset C.longlong) C.struct_DRSonyRtmdDisp {
-	rtmdCollection := drSonyRtmdDisp(C.GoString(absPath), int(start), int(count), int64(offset))
+func DrSonyRtmdDisp(absPath *C.char, start C.int, count C.int) C.struct_DRSonyRtmdDisp {
+	rtmdCollection := drSonyRtmdDisp(C.GoString(absPath), int(start), int(count))
 	var result C.struct_DRSonyRtmdDisp
-	result.Offset = C.longlong(rtmdCollection.Offset)
 	for i := 0; i < len(rtmdCollection.WhiteBalanceSlice); i++ {
 		result.WhiteBalanceModeArray.array[i].Frame = C.int(rtmdCollection.WhiteBalanceSlice[i].Frame)
 		result.WhiteBalanceModeArray.array[i].Data = C.CString(rtmdCollection.WhiteBalanceSlice[i].Data)
@@ -317,23 +288,27 @@ func DrSonyRtmdDisp(absPath *C.char, start C.int, count C.int, offset C.longlong
 	return result
 }
 
-// -file /path/to/file -output_mode resolve -o /path/to/folder
-// -folder /path/to/folder (-r)
+// -file /path/to/file
 func main() {
-	mediaFile := flag.String("file", "", "media file full path")
+	filePath := flag.String("file", "", "media file full path")
 	flag.Parse()
 
-	if *mediaFile == "" {
+	if *filePath == "" {
 		fmt.Println("Please input file path!")
 		os.Exit(1)
 	}
-	m, err := getMediaFile(*mediaFile)
-	defer m.Close()
+	f, err := internal.GetMediaFile(*filePath)
+	defer f.Close()
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		return
 	}
-	meta := m.ExtractMeta()
-	consoleOutput(meta)
+	m, err := meta.Read(f)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	consoleOutput(m)
+
 	fmt.Println("Processing Successfully!")
 }

@@ -1,3 +1,3 @@
-module github.com/fukco/media-meta-parser
+module github.com/fukco/media-metadata
 
-go 1.21
+go 1.23
