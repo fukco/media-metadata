@@ -298,11 +298,11 @@ func main() {
 		os.Exit(1)
 	}
 	f, err := internal.GetMediaFile(*filePath)
-	defer f.Close()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	defer f.Close()
 	m, err := meta.Read(f)
 	if err != nil {
 		fmt.Println(err)

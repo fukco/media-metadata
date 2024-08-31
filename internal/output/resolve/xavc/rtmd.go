@@ -125,7 +125,7 @@ func getSampleInfoFromMetaTrackMediaBox(boxDetail *box.BoxDetail) (*sampleInfo, 
 						stco, ok := child.Boxer.(*box.Stco)
 						if ok {
 							info.ChunkOffsets = stco.Offsets
-							chunkCount = stsz.Count
+							chunkCount = stco.Count
 						}
 					}
 				}
