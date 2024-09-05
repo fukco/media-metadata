@@ -32,6 +32,7 @@ const (
 	HandlerReferenceBox  BoxType = 0x68646C72 //"hdlr"
 	MediaInformationBox  BoxType = 0x6D696E66 //"minf"
 	SampleTableBox       BoxType = 0x7374626C //"stbl"
+	SampleToChunkBox     BoxType = 0x73747363 //"stsc"
 	SampleSizeBox        BoxType = 0x7374737A //"stsz"
 	ChunkOffsetBox       BoxType = 0x7374636F //"stco"
 )

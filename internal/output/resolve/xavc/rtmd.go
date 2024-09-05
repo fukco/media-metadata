@@ -100,10 +100,24 @@ func isMetaTrackMedia(boxDetail *box.BoxDetail) bool {
 }
 
 type sampleInfo struct {
-	Size            int
-	SampleCount     uint32
-	ChunkOffsets    []uint32
-	SamplesPerChunk uint32
+	Size              uint32
+	SampleCount       uint32
+	ChunkOffsets      []uint32
+	SamplesCountSlice []uint32
+}
+
+func (s *sampleInfo) getSampleOffset(input int) uint32 {
+	if uint32(input) >= s.SampleCount {
+		return 0
+	}
+	var comparand uint32 = 0
+	for i := 0; i < len(s.SamplesCountSlice); i++ {
+		if uint32(input) >= comparand && uint32(input) < s.SamplesCountSlice[i] {
+			return s.ChunkOffsets[i] + s.Size*(uint32(input)-comparand)
+		}
+		comparand = s.SamplesCountSlice[i]
+	}
+	return 0
 }
 
 func getSampleInfoFromMetaTrackMediaBox(boxDetail *box.BoxDetail) (*sampleInfo, error) {
@@ -111,28 +125,45 @@ func getSampleInfoFromMetaTrackMediaBox(boxDetail *box.BoxDetail) (*sampleInfo, 
 		return nil, fmt.Errorf("not mdia box")
 	}
 	info := &sampleInfo{}
-	var chunkCount uint32 = 0
+	var stsc *box.Stsc
+	chunkCount := 0
 	for _, c1 := range boxDetail.Children {
 		if c1.Type == box.MediaInformationBox {
 			for _, c2 := range c1.Children {
 				if c2.Type == box.SampleTableBox {
 					for _, child := range c2.Children {
+						result, ok := child.Boxer.(*box.Stsc)
+						if ok {
+							stsc = result
+						}
 						stsz, ok := child.Boxer.(*box.Stsz)
 						if ok {
-							info.Size = int(stsz.Size)
+							info.Size = stsz.Size
 							info.SampleCount = stsz.Count
 						}
 						stco, ok := child.Boxer.(*box.Stco)
 						if ok {
 							info.ChunkOffsets = stco.Offsets
-							chunkCount = stco.Count
+							chunkCount = int(stco.Count)
 						}
 					}
 				}
 			}
 		}
 	}
-	info.SamplesPerChunk = info.SampleCount / chunkCount
+	if stsc == nil {
+		return nil, fmt.Errorf("not found stsc")
+	}
+	info.SamplesCountSlice = make([]uint32, chunkCount)
+	var x uint32 = 0
+	for i, j := 0, 0; i < chunkCount; i++ {
+		samplesPerChunk := stsc.Entries[j].SamplesPerChunk
+		if j+1 < int(stsc.EntryCount) && i+2 >= int(stsc.Entries[j+1].FirstChunk) {
+			j++
+		}
+		x += samplesPerChunk
+		info.SamplesCountSlice[i] = x
+	}
 	return info, nil
 }
 

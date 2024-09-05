@@ -120,7 +120,7 @@ func (data rawData) CommonDistanceFormat() float64 {
 	return float64(m) * math.Pow10(int(e))
 }
 
-func ReadRTMD(r io.ReadSeeker, sampleSize int, offset int) (*RTMD, error) {
+func ReadRTMD(r io.ReadSeeker, sampleSize uint32, offset uint32) (*RTMD, error) {
 	_, err := r.Seek(int64(offset), 0)
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func ReadRTMD(r io.ReadSeeker, sampleSize int, offset int) (*RTMD, error) {
 	}
 
 	for {
-		if sampleSize > 0 && n >= sampleSize {
+		if sampleSize > 0 && n >= int(sampleSize) {
 			break
 		}
 		if _, err := io.CopyN(buf, r, 20); err != nil {

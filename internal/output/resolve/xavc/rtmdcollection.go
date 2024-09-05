@@ -94,7 +94,7 @@ func RtmdCollectionAppend(collection *RtmdCollection, index int, rtmd *rtmd.RTMD
 		Frame: index,
 		Data:  fmt.Sprintf("%.0fmm", rtmd.LensUnitMetadata.LensZoomPtr*1000),
 	})
-	collection.FocalLength35mmSlice = appendFrameData(collection.FocalLengthSlice, &FrameData{
+	collection.FocalLength35mmSlice = appendFrameData(collection.FocalLength35mmSlice, &FrameData{
 		Frame: index,
 		Data:  fmt.Sprintf("%.0fmm", rtmd.LensUnitMetadata.LensZoom35mmPtr*1000),
 	})
@@ -142,11 +142,11 @@ func ReadRtmdSlice(r io.ReadSeeker, start int, count int) (*RtmdCollection, erro
 
 	rtmdCollection := &RtmdCollection{}
 	for i := start; i < start+count; i++ {
-		offset := int(info.ChunkOffsets[i/int(info.SamplesPerChunk)]) + info.Size*(i%int(info.SamplesPerChunk))
+		offset := info.getSampleOffset(i)
 		if rtmd, err := rtmd.ReadRTMD(r, info.Size, offset); err != nil {
 			return nil, err
 		} else {
-			RtmdCollectionAppend(rtmdCollection, start+i, rtmd)
+			RtmdCollectionAppend(rtmdCollection, i, rtmd)
 		}
 	}
 	return rtmdCollection, nil

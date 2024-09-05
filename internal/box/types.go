@@ -208,6 +208,36 @@ func init() {
 	AddBoxDef(&Stbl{}, true, IsBox)
 }
 
+/************************** stsc **************************/
+type Stsc struct {
+	BoxBase
+	EntryCount uint32      `mp4:"size=32"`
+	Entries    []StscEntry `mp4:"len=dynamic,size=96"`
+}
+
+type StscEntry struct {
+	FirstChunk             uint32 `mp4:"size=32"`
+	SamplesPerChunk        uint32 `mp4:"size=32"`
+	SampleDescriptionIndex uint32 `mp4:"size=32"`
+}
+
+func (*Stsc) BoxType() BoxType {
+	return SampleToChunkBox
+}
+
+// GetFieldLength returns length of dynamic field
+func (stsc *Stsc) GetFieldLength(name string, ctx *Context) uint {
+	switch name {
+	case "Entries":
+		return uint(stsc.EntryCount)
+	}
+	panic(fmt.Errorf("invalid name of dynamic-length field: boxType=stsc fieldName=%s", name))
+}
+
+func init() {
+	AddBoxDef(&Stsc{}, false, IsFullBox)
+}
+
 /************************** stsz **************************/
 type Stsz struct {
 	BoxBase

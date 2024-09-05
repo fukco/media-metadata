@@ -155,7 +155,7 @@ func handleMediaBox(r io.ReadSeeker, metadata *Metadata, boxDetail *box.BoxDetai
 	if handlerType != "meta" {
 		return nil
 	}
-	sampleSize, offset := 0, 0
+	sampleSize, offset := uint32(0), uint32(0)
 	for _, c1 := range boxDetail.Children {
 		if c1.Type == box.MediaInformationBox {
 			for _, c2 := range c1.Children {
@@ -163,11 +163,11 @@ func handleMediaBox(r io.ReadSeeker, metadata *Metadata, boxDetail *box.BoxDetai
 					for _, child := range c2.Children {
 						stsz, ok := child.Boxer.(*box.Stsz)
 						if ok {
-							sampleSize = int(stsz.Size)
+							sampleSize = stsz.Size
 						}
 						stco, ok := child.Boxer.(*box.Stco)
 						if ok {
-							offset = int(stco.Offsets[0])
+							offset = stco.Offsets[0]
 						}
 					}
 				}
