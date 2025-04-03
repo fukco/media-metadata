@@ -14,7 +14,7 @@ type BoxInfo struct {
 	// Size specifies size(bytes) of box.
 	Size uint64
 
-	// HeaderSize specifies size(bytes) of common fields which are defined as "Box" class member at ISO/IEC 14496-12.
+	// HeaderSize specifies size(bytes) of Box or FullBox header size
 	HeaderSize uint64
 
 	// Type specifies box type which is represented by 4 characters.
@@ -36,7 +36,7 @@ func ReadBoxInfo(r io.ReadSeeker) (*BoxInfo, error) {
 		Offset: uint64(offset),
 	}
 
-	if header, fullBoxHeader, err := ReadBoxHeader(r); err != nil {
+	if header, fullBoxHeader, err := ReadHeader(r); err != nil {
 		return nil, err
 	} else {
 		bi.Size = uint64(header.Size)

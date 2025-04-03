@@ -85,6 +85,7 @@ func readIFD(data []byte, offset uint32, directoryType DirectoryType, exif *Base
 	exif.Directories = append(exif.Directories, directory)
 
 	if nextIFDOffset != 0 {
+		//TODO IFD++
 		if err := readIFD(data, nextIFDOffset, IFD1, exif, mfr); err != nil {
 			return err
 		}

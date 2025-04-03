@@ -59,7 +59,7 @@ func (boxType BoxType) String() string {
 	binary.BigEndian.PutUint32(b, uint32(boxType))
 	if isPrintable(b[0]) && isPrintable(b[1]) && isPrintable(b[2]) && isPrintable(b[3]) {
 		s := string(b)
-		s = strings.ReplaceAll(s, string([]byte{0xa9}), "(c)")
+		s = strings.ReplaceAll(s, string([]byte{0xa9}), "©")
 		return s
 	}
 	return fmt.Sprintf("%#08X", boxType)

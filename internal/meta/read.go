@@ -2,6 +2,7 @@ package meta
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"github.com/fukco/media-metadata/internal/box"
@@ -77,6 +78,8 @@ func iterator(r io.ReadSeeker, metadata *Metadata, fileStructure *box.FileStruct
 
 func handleBoxDetail(r io.ReadSeeker, metadata *Metadata, boxDetail *box.BoxDetail, fileStructure *box.FileStructure) error {
 	switch boxDetail.Type {
+	case box.MovieHeaderBox:
+		// todo CreationTime ModificationTime
 	case box.MediaBox:
 		err := handleMediaBox(r, metadata, boxDetail)
 		if err != nil {
@@ -257,6 +260,19 @@ func handlePanasonicPANABox(r io.ReadSeeker, metadata *Metadata, boxDetail *box.
 	data := make([]byte, bi.Size-bi.HeaderSize-0x4080)
 	if _, err := r.Read(data); err != nil {
 		return err
+	}
+	if hex.EncodeToString(data[:4]) != "ffd8ffe9" {
+		_, err = r.Seek(int64(bi.Offset+bi.HeaderSize+0x200080), io.SeekStart)
+		if err != nil {
+			return err
+		}
+		data = make([]byte, bi.Size-bi.HeaderSize-0x200080)
+		if _, err = r.Read(data); err != nil {
+			return err
+		}
+		if hex.EncodeToString(data[:4]) != "ffd8ffe1" {
+			return nil
+		}
 	}
 	exifMeta, err := exif.ProcessJPEG(data, fileStructure.Mfr)
 	if err != nil {

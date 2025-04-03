@@ -18,7 +18,8 @@ type FullBoxHeader struct {
 	Flags   [3]byte
 }
 
-func ReadBoxHeader(r io.ReadSeeker) (*BoxHeader, *FullBoxHeader, error) {
+// ReadHeader read Box Header and FullBox Header
+func ReadHeader(r io.ReadSeeker) (*BoxHeader, *FullBoxHeader, error) {
 	header := &BoxHeader{}
 	fullBoxHeader := &FullBoxHeader{}
 
