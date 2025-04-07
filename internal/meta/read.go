@@ -261,7 +261,7 @@ func handlePanasonicPANABox(r io.ReadSeeker, metadata *Metadata, boxDetail *box.
 	if _, err := r.Read(data); err != nil {
 		return err
 	}
-	if hex.EncodeToString(data[:4]) != "ffd8ffe9" {
+	if hex.EncodeToString(data[:4]) != "ffd8ffe1" {
 		_, err = r.Seek(int64(bi.Offset+bi.HeaderSize+0x200080), io.SeekStart)
 		if err != nil {
 			return err
